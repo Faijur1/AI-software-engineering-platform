@@ -9,7 +9,7 @@ from app.core.config import get_settings
 from app.core.errors import register_exception_handlers
 from app.core.logging import configure_logging, get_logger
 from app.core.middleware import TraceMiddleware
-from app.routes import auth, evaluations, health, jobs, repositories, search
+from app.routes import auth, chat, evaluations, health, jobs, repositories, search
 
 logger = get_logger(__name__)
 
@@ -45,6 +45,7 @@ def create_app() -> FastAPI:
     app.include_router(jobs.router)
     app.include_router(search.router)
     app.include_router(evaluations.router)
+    app.include_router(chat.router)
 
     logger.info("application_started", environment=settings.app_env.value)
     return app

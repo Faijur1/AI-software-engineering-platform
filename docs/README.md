@@ -27,7 +27,7 @@ planned. Documents describing later milestones mark unbuilt sections as
 | 4 | Embeddings + pgvector storage, incremental re-indexing | ✅ **Done — verified** |
 | 5 | Hybrid retrieval (vector + full-text), merge, dedupe | ✅ **Done — verified** |
 | 6 | Evaluation harness, labelled benchmark, Recall@K / Precision@K | ✅ **Done — verified** |
-| 7 | Reranking + chat answers with citations | ⬜ Not started |
+| 7 | Reranking + chat answers with citations | ⚠️ **Partial — see below** |
 | 8 | RAG inspector UI | ⬜ Not started |
 | 9 | Agent loop, tools, Docker sandbox, patch proposal + diff viewer | ⬜ Not started |
 
@@ -287,4 +287,71 @@ with the numbers visible. Tuning was stopped there deliberately. **Future
 tuning claims need held-out questions the tuner has not seen.**
 
 - Quality gate: `ruff` clean, `mypy --strict` clean on 59 files, 216 tests
+  passing, `tsc --noEmit` clean, `eslint` clean, `next build` succeeding.
+
+### Milestone 7 — what was verified, and what was not
+
+**Reranking: done, and it is the largest measured gain in the project.**
+
+Milestone 6's finding 4 — that tests and documentation out-rank
+implementation — turned out to be the dominant problem. A role-weighted
+reranker (source 1.0, config 0.8, docs 0.7, test 0.6) was measured on the
+**held-out** question set, written before any tuning and used for exactly one
+confirmatory run:
+
+| configuration | R@1 | R@5 | R@10 | MRR |
+| --- | --- | --- | --- | --- |
+| vector only | 0.429 | 0.607 | 0.714 | 0.664 |
+| hybrid | 0.321 | 0.750 | 0.786 | 0.661 |
+| **hybrid + role weighting** | **0.571** | **0.821** | **0.821** | **0.774** |
+
+It is the bigger of the two effects. Hybrid over vector-only gained +0.143 R@5
+and nothing on MRR; role weighting added a further +0.071 R@5 and **+0.113
+MRR** on top, for the cost of a dictionary lookup.
+
+**The specified cross-encoder was not shipped.** `bge-reranker-base` was
+implemented and measured, then removed. It segfaulted (`ACCESS_VIOLATION`)
+partway through benchmark runs at two batch sizes with threading pinned, and
+before crashing logged **22–29 seconds to score 20 query/chunk pairs** on CPU.
+A probe also suggested it prefers prose to code — it scored a documentation
+paragraph 0.998 against the `encrypt_token` function's 0.095 — which would
+worsen the very problem role weighting fixes. Full reasoning and evidence in
+[ADR-012](adr/ADR-012-role-weighted-reranking.md).
+
+**Chat: the pipeline works. The answers are not trustworthy on this hardware.**
+
+Retrieval → rerank → bounded context → generation → citation verification runs
+end to end against the real index and a real model. Context assembly enforces a
+token budget, labels repository content as untrusted data inside explicit
+delimiters, and numbers sources so citations are checkable.
+
+But two things must be stated plainly rather than buried:
+
+1. **The 7B model does not fit.** This machine has 7.7 GB RAM with ~0.6 GB
+   free; `qwen2.5-coder:7b` needs 4.7 GB and Ollama fails to allocate it.
+   Verification used `qwen2.5-coder:1.5b`, which fits.
+2. **That model does not cite.** Across four test questions, citation coverage
+   was **0.0 every time** — the answers were substantively reasonable but
+   carried no `[n]` markers at all, despite an explicit instruction. The API
+   now attaches a warning note when an answer cites nothing, because a
+   confident uncited answer is the shape a fabrication takes.
+
+It also fabricated. Asked "what is the airspeed velocity of an unladen
+swallow", the first prompt version answered "approximately 47 mph. This
+information is provided in the source code at [4]" — citing a real retrieved
+chunk for a claim found nowhere in it. A stronger prompt improved this to
+"approximately 45 mph. This information is not provided in the given codebase",
+which is better but still leads with an invented number.
+
+**This is the finding that matters most:** citation *validity* is not
+groundedness. The checker correctly reported `valid: true` for an answer that
+was entirely fabricated, because the cited index existed. Mechanical checks
+catch invented source numbers; they cannot catch invented claims. Groundedness
+needs a judge, and an unvalidated judge would be a number with nothing behind
+it — so it is **not implemented and not claimed**, rather than approximated.
+
+Whether a larger model cites reliably is **untested here**. Nothing in this
+milestone should be read as evidence that it would.
+
+- Quality gate: `ruff` clean, `mypy --strict` clean on 70 files, 234 tests
   passing, `tsc --noEmit` clean, `eslint` clean, `next build` succeeding.

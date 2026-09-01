@@ -57,7 +57,7 @@ def _q(
     return Question(id, query, frozenset(files), style, rationale)
 
 
-BENCHMARK: list[Question] = [
+DEV_BENCHMARK: list[Question] = [
     # ---------- identifier-phrased ----------
     _q(
         "id-01",
@@ -260,6 +260,124 @@ BENCHMARK: list[Question] = [
 ]
 
 
-def expected_paths() -> set[str]:
-    """Every path any question depends on, for the staleness check."""
-    return {path for question in BENCHMARK for path in question.expected_files}
+# Written before any tuning was attempted and deliberately not consulted while
+# retrieval was being changed. The dev set above has been used for tuning and
+# is therefore no longer a clean measure of generalisation; this one is the
+# honest number. Keep it that way: if you tune against these, they stop being
+# held out and a new set is needed.
+HELDOUT_BENCHMARK: list[Question] = [
+    _q(
+        "h-id-01",
+        "reciprocal_rank",
+        ["backend/eval/metrics.py"],
+        QuestionStyle.identifier,
+        "The MRR helper.",
+    ),
+    _q(
+        "h-id-02",
+        "detect_language",
+        ["backend/app/ingestion/languages.py"],
+        QuestionStyle.identifier,
+        "Extension to grammar mapping.",
+    ),
+    _q(
+        "h-id-03",
+        "TraceMiddleware",
+        ["backend/app/core/middleware.py"],
+        QuestionStyle.identifier,
+        "Correlation id middleware.",
+    ),
+    _q(
+        "h-id-04",
+        "decrypt_token",
+        ["backend/app/core/security.py"],
+        QuestionStyle.identifier,
+        "Token decryption.",
+    ),
+    _q(
+        "h-id-05",
+        "PassthroughReranker",
+        ["backend/app/rag/reranker.py"],
+        QuestionStyle.identifier,
+        "The inert reranker.",
+    ),
+    # ---------- conceptual ----------
+    _q(
+        "h-con-01",
+        "how does the code decide a file is not worth reading",
+        ["backend/app/ingestion/filters.py", "backend/app/ingestion/discovery.py"],
+        QuestionStyle.conceptual,
+        "Filtering policy, plus the strict decode that rejects binary content.",
+    ),
+    _q(
+        "h-con-02",
+        "where is the boundary that keeps untrusted archives from writing anywhere",
+        ["backend/app/ingestion/fetcher.py"],
+        QuestionStyle.conceptual,
+        "Safe tar extraction.",
+    ),
+    _q(
+        "h-con-03",
+        "how does a browser session survive between page loads",
+        ["backend/app/core/security.py", "backend/app/routes/auth.py"],
+        QuestionStyle.conceptual,
+        "Signed cookie minted at the callback and verified per request.",
+    ),
+    _q(
+        "h-con-04",
+        "what decides how many pieces of text go to the language model",
+        ["backend/app/rag/retriever.py", "backend/app/rag/reranker.py"],
+        QuestionStyle.conceptual,
+        "Candidate limit and the narrowing step.",
+    ),
+    _q(
+        "h-con-05",
+        "how would I add support for a new programming language",
+        ["backend/app/ingestion/languages.py", "backend/app/ingestion/chunker.py"],
+        QuestionStyle.conceptual,
+        "Extension mapping plus the node-type sets the chunker walks.",
+    ),
+    # ---------- mixed ----------
+    _q(
+        "h-mix-01",
+        "how is progress reported while a repository is being indexed",
+        ["backend/app/workers/ingestion.py", "backend/app/ingestion/service.py"],
+        QuestionStyle.mixed,
+        "Progress callback plumbing and the job row updates.",
+    ),
+    _q(
+        "h-mix-02",
+        "how are database migrations applied",
+        ["backend/migrations/env.py", "docs/database.md"],
+        QuestionStyle.mixed,
+        "Alembic environment and the documented workflow.",
+    ),
+    _q(
+        "h-mix-03",
+        "what is stored about each retrieved chunk",
+        ["backend/app/models/chunk.py", "backend/app/rag/types.py"],
+        QuestionStyle.mixed,
+        "The chunk table and the retrieval result type.",
+    ),
+    _q(
+        "h-mix-04",
+        "how does the frontend keep the session cookie out of browser code",
+        ["frontend/src/lib/session.ts"],
+        QuestionStyle.mixed,
+        "Server-side cookie forwarding.",
+    ),
+]
+
+# Kept for callers that just want the tuning set.
+BENCHMARK = DEV_BENCHMARK
+
+SETS: dict[str, list[Question]] = {
+    "dev": DEV_BENCHMARK,
+    "heldout": HELDOUT_BENCHMARK,
+}
+
+
+def expected_paths(questions: list[Question] | None = None) -> set[str]:
+    """Every path the given questions depend on, for the staleness check."""
+    source = questions if questions is not None else DEV_BENCHMARK + HELDOUT_BENCHMARK
+    return {path for question in source for path in question.expected_files}

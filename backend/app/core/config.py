@@ -82,6 +82,7 @@ class Settings(BaseSettings):
     # too large and one failure wastes more work and the request can time out.
     embedding_batch_size: int = 32
 
+
     # ---------- URLs ----------
     # Where the browser is sent after a completed OAuth round trip, and the
     # origin allowed to make credentialed cross-site calls to this API.

@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import time
 import uuid
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from typing import Final
 
@@ -24,9 +25,10 @@ from sqlalchemy.orm import Session
 
 from app.llm.base import EmbeddingProvider
 from app.models.file import File
+from app.rag.reranker import PassthroughReranker, Reranker, RoleWeightedReranker
 from app.rag.retriever import retrieve
 from app.rag.types import RetrievalMethod
-from eval.benchmark import BENCHMARK, Question, QuestionStyle, expected_paths
+from eval.benchmark import DEV_BENCHMARK, Question, QuestionStyle, expected_paths
 from eval.metrics import mean, score_query
 
 # Cutoffs worth reporting. 5 is roughly what fits a context window alongside a
@@ -34,10 +36,14 @@ from eval.metrics import mean, score_query
 # present; 10 is the full retrieved set.
 CUTOFFS: Final = (1, 3, 5, 10)
 
-CONFIGURATIONS: Final = {
-    "vector_only": {"use_vector": True, "use_keyword": False},
-    "keyword_only": {"use_vector": False, "use_keyword": True},
-    "hybrid": {"use_vector": True, "use_keyword": True},
+# Each entry is (use_vector, use_keyword, reranker factory). The reranker is
+# part of the configuration rather than a separate axis so that "hybrid" always
+# means the same thing and any reranked row is directly comparable to it.
+CONFIGURATIONS: Final[dict[str, tuple[bool, bool, Callable[[], Reranker]]]] = {
+    "vector_only": (True, False, PassthroughReranker),
+    "keyword_only": (False, True, PassthroughReranker),
+    "hybrid": (True, True, PassthroughReranker),
+    "hybrid+roleweight": (True, True, RoleWeightedReranker),
 }
 
 
@@ -73,6 +79,7 @@ class BenchmarkReport:
     repository: str
     commit: str | None
     chunk_count: int
+    question_set: str
     question_count: int
     cutoffs: list[int]
     reranker: str
@@ -82,7 +89,9 @@ class BenchmarkReport:
         return asdict(self)
 
 
-def assert_labels_are_current(session: Session, repository_id: uuid.UUID) -> None:
+def assert_labels_are_current(
+    session: Session, repository_id: uuid.UUID, questions: list[Question] | None = None
+) -> None:
     """Refuse to run if any labelled file is missing from the index.
 
     A benchmark whose labels have drifted scores zero on the questions it can
@@ -95,7 +104,7 @@ def assert_labels_are_current(session: Session, repository_id: uuid.UUID) -> Non
             select(File).where(File.repository_id == repository_id)
         ).scalars()
     }
-    missing = sorted(expected_paths() - indexed)
+    missing = sorted(expected_paths(questions) - indexed)
     if missing:
         raise StaleBenchmarkError(
             "These benchmark labels are not in the index, so the scores would "
@@ -112,6 +121,7 @@ def run_question(
     question: Question,
     use_vector: bool,
     use_keyword: bool,
+    reranker: Reranker | None = None,
 ) -> QuestionResult:
     """Retrieve for one question and score it at every cutoff."""
     result = retrieve(
@@ -122,6 +132,7 @@ def run_question(
         limit=max(CUTOFFS),
         use_vector=use_vector,
         use_keyword=use_keyword,
+        reranker=reranker,
     )
 
     # Deduplicated to file granularity, preserving rank order: two chunks from
@@ -161,11 +172,13 @@ def run_configuration(
     name: str,
     use_vector: bool,
     use_keyword: bool,
+    questions: list[Question],
+    reranker: Reranker | None = None,
 ) -> ConfigurationReport:
     started = time.perf_counter()
     report = ConfigurationReport(name=name)
 
-    for question in BENCHMARK:
+    for question in questions:
         report.questions.append(
             run_question(
                 session,
@@ -174,6 +187,7 @@ def run_configuration(
                 question=question,
                 use_vector=use_vector,
                 use_keyword=use_keyword,
+                reranker=reranker,
             )
         )
 
@@ -213,27 +227,33 @@ def run_benchmark(
     repository_name: str,
     commit: str | None,
     chunk_count: int,
+    questions: list[Question] | None = None,
+    question_set: str = "dev",
 ) -> BenchmarkReport:
-    """Run every configuration over the whole benchmark."""
-    assert_labels_are_current(session, repository_id)
+    """Run every configuration over one question set."""
+    selected = questions if questions is not None else DEV_BENCHMARK
+    assert_labels_are_current(session, repository_id, selected)
 
     report = BenchmarkReport(
         repository=repository_name,
         commit=commit,
         chunk_count=chunk_count,
-        question_count=len(BENCHMARK),
+        question_set=question_set,
+        question_count=len(selected),
         cutoffs=list(CUTOFFS),
         reranker="passthrough",
     )
 
-    for name, flags in CONFIGURATIONS.items():
+    for name, (use_vector, use_keyword, make_reranker) in CONFIGURATIONS.items():
         report.configurations[name] = run_configuration(
             session,
             embedder,
             repository_id=repository_id,
             name=name,
-            use_vector=bool(flags["use_vector"]),
-            use_keyword=bool(flags["use_keyword"]),
+            use_vector=use_vector,
+            use_keyword=use_keyword,
+            questions=selected,
+            reranker=make_reranker(),
         )
 
     return report
@@ -245,16 +265,16 @@ def format_report(report: BenchmarkReport) -> str:
     lines.append(f"Repository : {report.repository}")
     lines.append(f"Commit     : {(report.commit or '?')[:12]}")
     lines.append(f"Chunks     : {report.chunk_count}")
-    lines.append(f"Questions  : {report.question_count}")
-    lines.append(f"Reranker   : {report.reranker} (inert -- this is the baseline)")
+    lines.append(f"Question set: {report.question_set} ({report.question_count} questions)")
+    lines.append("Rerankers  : passthrough, except the +roleweight row")
     lines.append("")
 
-    header = f"{'configuration':<14}" + "".join(f"{'R@' + str(k):>8}" for k in CUTOFFS)
+    header = f"{'configuration':<22}" + "".join(f"{'R@' + str(k):>8}" for k in CUTOFFS)
     header += "".join(f"{'P@' + str(k):>8}" for k in CUTOFFS) + f"{'MRR':>8}"
     lines.append(header)
     lines.append("-" * len(header))
     for name, config in report.configurations.items():
-        row = f"{name:<14}"
+        row = f"{name:<22}"
         row += "".join(f"{config.recall[k]:>8.3f}" for k in CUTOFFS)
         row += "".join(f"{config.precision[k]:>8.3f}" for k in CUTOFFS)
         row += f"{config.mrr:>8.3f}"
@@ -263,9 +283,9 @@ def format_report(report: BenchmarkReport) -> str:
     lines.append("")
     lines.append("By question style (recall@5 / hit@5):")
     styles = sorted({s for c in report.configurations.values() for s in c.by_style})
-    lines.append(f"{'configuration':<14}" + "".join(f"{s:>22}" for s in styles))
+    lines.append(f"{'configuration':<22}" + "".join(f"{s:>22}" for s in styles))
     for name, config in report.configurations.items():
-        row = f"{name:<14}"
+        row = f"{name:<22}"
         for style in styles:
             stats = config.by_style.get(style)
             row += (

@@ -21,6 +21,7 @@ from app.core.errors import ExternalServiceError
 from app.llm.ollama import OllamaEmbedder
 from app.models.chunk import CodeChunk
 from app.models.repository import Repository
+from eval.benchmark import SETS
 from eval.runner import (
     StaleBenchmarkError,
     find_regressions,
@@ -34,6 +35,16 @@ RESULTS_DIR = Path(__file__).parent / "results"
 def main() -> int:
     parser = argparse.ArgumentParser(prog="eval", description=__doc__)
     parser.add_argument("--repository", help="owner/name; defaults to the only one")
+    parser.add_argument(
+        "--set",
+        dest="question_set",
+        choices=["dev", "heldout", "both"],
+        default="dev",
+        help=(
+            "dev is the tuning set and has been used for tuning; heldout has "
+            "not, and is the honest measure of generalisation"
+        ),
+    )
     parser.add_argument("--json", type=Path, help="write the full report here")
     parser.add_argument(
         "--no-save",
@@ -77,29 +88,42 @@ def main() -> int:
             )
             return 2
 
+        names = ["dev", "heldout"] if args.question_set == "both" else [args.question_set]
+        reports = []
         try:
-            report = run_benchmark(
-                session,
-                embedder,
-                repository_id=repository.id,
-                repository_name=repository.full_name,
-                commit=repository.current_commit,
-                chunk_count=chunk_count,
-            )
+            for name in names:
+                reports.append(
+                    run_benchmark(
+                        session,
+                        embedder,
+                        repository_id=repository.id,
+                        repository_name=repository.full_name,
+                        commit=repository.current_commit,
+                        chunk_count=chunk_count,
+                        questions=SETS[name],
+                        question_set=name,
+                    )
+                )
         except StaleBenchmarkError as exc:
             print(f"Benchmark is stale:\n{exc}", file=sys.stderr)
             return 3
 
-    print(format_report(report))
+    for report in reports:
+        print(format_report(report))
+        print()
 
+    report = reports[-1]
     failures = find_regressions(report)
-    print(f"\nHybrid found nothing relevant in the top 5 for {len(failures)} question(s):")
+    print(
+        f"Hybrid found nothing relevant in the top 5 for {len(failures)} "
+        f"question(s) [{report.question_set}]:"
+    )
     for question in failures:
         print(f"  {question.id}  {question.query}")
         print(f"      expected : {', '.join(question.expected)}")
         print(f"      got      : {', '.join(question.retrieved[:3]) or '(nothing)'}")
 
-    payload = report.to_dict()
+    payload: dict[str, object] = {"reports": [r.to_dict() for r in reports]}
     payload["generated_at"] = datetime.now(UTC).isoformat()
 
     if args.json:

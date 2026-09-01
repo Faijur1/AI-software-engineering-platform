@@ -5,6 +5,7 @@ import { UserMenu } from "@/features/auth/UserMenu";
 import type { User } from "@/features/auth/types";
 import { IndexButton } from "@/features/repositories/IndexButton";
 import { RepositoryActionButton } from "@/features/repositories/RepositoryActionButton";
+import { ChatPanel } from "@/features/chat/ChatPanel";
 import { SearchPanel } from "@/features/search/SearchPanel";
 import {
   connectRepository,
@@ -120,6 +121,7 @@ export default async function RepositoriesPage({ searchParams }: PageProps) {
         )}
       </section>
 
+      {searchable && <ChatPanel repositoryId={searchable.id} />}
       {searchable && <SearchPanel repositoryId={searchable.id} />}
 
       <section className="mt-10">

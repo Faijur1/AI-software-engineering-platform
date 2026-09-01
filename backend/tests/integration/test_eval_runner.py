@@ -224,7 +224,9 @@ def test_a_stale_label_stops_the_run(
 ) -> None:
     """Silently scoring zero on a moved file looks exactly like a regression."""
     monkeypatch.setattr(
-        runner, "expected_paths", lambda: {"src/target.py", "src/deleted.py"}
+        runner,
+        "expected_paths",
+        lambda _questions=None: {"src/target.py", "src/deleted.py"},
     )
 
     with (
@@ -237,7 +239,9 @@ def test_a_stale_label_stops_the_run(
 def test_current_labels_pass_the_staleness_check(
     indexed: uuid.UUID, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(runner, "expected_paths", lambda: {"src/target.py"})
+    monkeypatch.setattr(
+        runner, "expected_paths", lambda _questions=None: {"src/target.py"}
+    )
 
     with session_scope() as session:
         assert_labels_are_current(session, indexed)
