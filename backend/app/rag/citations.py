@@ -24,9 +24,19 @@ from app.rag.context import Source
 # the prompt asks for bare bracketed numbers and anything else is a deviation
 # worth seeing rather than silently accepting.
 _CITATION = re.compile(r"\[(\d+(?:\s*,\s*\d+)*)\]")
-# A sentence for the purposes of "did this claim cite anything". Crude, and
-# only used for a ratio, never to alter the answer.
-_SENTENCE = re.compile(r"[^.!?\n]+[.!?]?")
+# Inline code spans are masked before sentence splitting. Without that, a
+# period inside `security.py` or `obj.method()` looks like a sentence end --
+# which, in an answer *about code*, is not an edge case but the common case.
+# The naive splitter turned "...in `core/security.py` [3]." into a fragment
+# containing only "py` [3].", which was then discarded as too short, so a real
+# citation was scored as no citation at all.
+_CODE_SPAN = re.compile(r"`[^`\n]*`")
+# A sentence ends at .!? followed by whitespace or end of text.
+_SENTENCE_END = re.compile(r"[.!?](?=\s|$)")
+# A fragment counts as a sentence only if it holds at least two word-like
+# tokens. That keeps stray punctuation and bare citation markers out of the
+# denominator without discarding genuinely short sentences.
+_WORD = re.compile(r"[A-Za-z]{2,}")
 
 
 @dataclass(slots=True)
@@ -78,13 +88,35 @@ def check_citations(answer: str, sources: list[Source]) -> CitationReport:
     report.invalid_indices = [i for i in seen if i not in valid]
     report.unused_indices = sorted(valid - set(seen))
 
-    for candidate in _SENTENCE.finditer(answer):
-        sentence = candidate.group().strip()
-        # Ignore fragments that are only whitespace or a lone citation marker.
-        if len(sentence) < 15:
-            continue
+    for sentence in split_sentences(answer):
         report.sentences += 1
         if _CITATION.search(sentence):
             report.sentences_with_citation += 1
 
     return report
+
+
+def split_sentences(text: str) -> list[str]:
+    """Split an answer into sentences, tolerating code and file paths.
+
+    Public so the behaviour can be tested directly: the failure it exists to
+    prevent -- a citation lost to a period inside a filename -- is invisible in
+    the aggregate ratio it feeds.
+    """
+    # Replaced with spaces of the same length, so every offset found in the
+    # masked copy still indexes the original text.
+    masked = _CODE_SPAN.sub(lambda match: " " * len(match.group()), text)
+
+    sentences: list[str] = []
+    start = 0
+    for end in _SENTENCE_END.finditer(masked):
+        sentences.append(text[start : end.end()])
+        start = end.end()
+    if start < len(text):
+        sentences.append(text[start:])
+
+    return [
+        stripped
+        for stripped in (sentence.strip() for sentence in sentences)
+        if len(_WORD.findall(stripped)) >= 2
+    ]

@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import uuid
 
-from app.rag.citations import check_citations
+import pytest
+
+from app.rag.citations import check_citations, split_sentences
 from app.rag.context import (
     CHARS_PER_TOKEN,
     MAX_CHUNK_TOKENS,
@@ -192,3 +194,63 @@ def test_an_answer_with_no_citations_scores_zero_coverage() -> None:
     assert report.cited_indices == []
     # No citations is not the same as invalid ones.
     assert report.is_valid
+
+
+def test_a_period_in_a_filename_does_not_end_a_sentence() -> None:
+    """Regression: this silently zeroed the coverage metric.
+
+    An answer about code is full of periods that are not sentence ends --
+    ``security.py``, ``obj.method()``. The naive splitter cut
+    "...in `core/security.py` [3]." into a fragment holding only "py` [3].",
+    discarded it as too short, and reported an answer that did cite as one that
+    did not.
+    """
+    answer = (
+        "Tokens are encrypted with the `TOKEN_ENCRYPTION_KEY` secret. "
+        "This happens in `backend/app/core/security.py` [3]. "
+        "The function raises if decryption fails."
+    )
+    sources = build_context([_chunk(i) for i in range(1, 4)]).sources
+
+    report = check_citations(answer, sources)
+
+    assert report.sentences == 3
+    assert report.sentences_with_citation == 1
+    assert report.citation_coverage == pytest.approx(1 / 3)
+    assert report.cited_indices == [3]
+
+
+def test_sentence_splitting_survives_code_spans() -> None:
+    sentences = split_sentences(
+        "Call `a.b.c()` first. Then read `x.py` and `y.json`. That is all."
+    )
+
+    assert len(sentences) == 3
+    assert sentences[0].startswith("Call")
+    assert sentences[1].startswith("Then read")
+
+
+def test_a_one_word_fragment_is_not_counted_as_a_claim() -> None:
+    """"Done." is not an uncited assertion about the code."""
+    assert split_sentences("The worker retries [1]. Done.") == [
+        "The worker retries [1]."
+    ]
+
+
+def test_bare_citation_fragments_are_not_counted_as_sentences() -> None:
+    """A lone marker is not a claim, and would dilute the ratio."""
+    sources = build_context([_chunk(1)]).sources
+
+    report = check_citations("The worker retries on failure [1]. [1]", sources)
+
+    assert report.sentences == 1
+    assert report.citation_coverage == 1.0
+
+
+def test_a_short_real_sentence_still_counts() -> None:
+    sources = build_context([_chunk(1)]).sources
+
+    report = check_citations("It is cached [1]. Nothing else.", sources)
+
+    assert report.sentences == 2
+    assert report.sentences_with_citation == 1

@@ -325,33 +325,60 @@ end to end against the real index and a real model. Context assembly enforces a
 token budget, labels repository content as untrusted data inside explicit
 delimiters, and numbers sources so citations are checkable.
 
-But two things must be stated plainly rather than buried:
+**The 7B model does not fit.** This machine has 7.7 GB RAM with ~0.6 GB free;
+`qwen2.5-coder:7b` needs 4.7 GB and Ollama fails to allocate it. Two smaller
+models of the same family were measured instead.
 
-1. **The 7B model does not fit.** This machine has 7.7 GB RAM with ~0.6 GB
-   free; `qwen2.5-coder:7b` needs 4.7 GB and Ollama fails to allocate it.
-   Verification used `qwen2.5-coder:1.5b`, which fits.
-2. **That model does not cite.** Across four test questions, citation coverage
-   was **0.0 every time** — the answers were substantively reasonable but
-   carried no `[n]` markers at all, despite an explicit instruction. The API
-   now attaches a warning note when an answer cites nothing, because a
-   confident uncited answer is the shape a fabrication takes.
+| | `qwen2.5-coder:1.5b` | `qwen2.5-coder:3b` |
+| --- | --- | --- |
+| Refuses an off-topic question | ❌ invented "45 mph" | ✅ "I cannot answer this question. It is not related to the codebase provided." |
+| Cited any source | 0 of 3 substantive questions | 1 of 3 (coverage 0.333) |
+| Factual errors in answers | yes | yes |
+| Generation time | 7–20 s | 12–13 s |
 
-It also fabricated. Asked "what is the airspeed velocity of an unladen
-swallow", the first prompt version answered "approximately 47 mph. This
-information is provided in the source code at [4]" — citing a real retrieved
-chunk for a claim found nowhere in it. A stronger prompt improved this to
-"approximately 45 mph. This information is not provided in the given codebase",
-which is better but still leads with an invented number.
+**3b fixed fabrication; it did not fix citation.** Asked the airspeed velocity
+of an unladen swallow, 1.5b answered "approximately 47 mph. This information is
+provided in the source code at [4]" — citing a real retrieved chunk for a claim
+found nowhere in it. 3b refuses cleanly. But 3b still cited on only one of
+three real questions, and still made inverted claims: it said `is_secret_path`
+returns `False` for a secret path (it returns `True`), and attributed
+encryption to `decrypt_token` rather than `encrypt_token` — with the correct
+chunks in front of it both times.
 
-**This is the finding that matters most:** citation *validity* is not
-groundedness. The checker correctly reported `valid: true` for an answer that
-was entirely fabricated, because the cited index existed. Mechanical checks
-catch invented source numbers; they cannot catch invented claims. Groundedness
-needs a judge, and an unvalidated judge would be a number with nothing behind
-it — so it is **not implemented and not claimed**, rather than approximated.
+**Retrieval is not the bottleneck; the model is.** For the `is_secret_path`
+question, three of the six sources were `filters.py` chunks including
+`classify` and `SkipReason`. The evidence was there and was misread.
 
-Whether a larger model cites reliably is **untested here**. Nothing in this
-milestone should be read as evidence that it would.
+**Citation validity is not groundedness.** The checker correctly reported
+`valid: true` for an answer that was entirely fabricated, because the cited
+index existed. Mechanical checks catch invented source numbers; they cannot
+catch invented claims. Groundedness needs a judge, and an unvalidated judge
+would be a number with nothing behind it — so it is **not implemented and not
+claimed**, rather than approximated.
+
+#### A metric bug found while comparing the two models
+
+The first reading of these results was wrong, and the correction matters more
+than the original number. Citation coverage was reported as **0.0 for every
+answer**, and that was taken as "the model does not cite". It was a bug in the
+metric: sentences were split on `.!?`, so the period inside
+`` `backend/app/core/security.py` `` cut the sentence in two and left a
+fragment holding only ``py` [3].`` — which the length guard then discarded. A
+real citation was scored as none.
+
+In an answer *about code*, periods that are not sentence ends are the common
+case, not an edge case. The splitter now masks inline code spans before
+splitting and counts a fragment only if it holds two or more word-like tokens,
+with regression tests over the exact answers that exposed it. 1.5b genuinely
+did not cite — it emitted no `[n]` markers at all — but 3b's 0.333 had been
+reported as 0.0.
+
+#### Verdict: not good enough for citation-grade answers
+
+The pipeline is sound and retrieval is measurably good. The models that fit in
+7.7 GB are not. A larger model — cloud or a machine with more memory — is the
+next step, and the only code change it needs is a provider behind the same
+interface: `app/llm/chat.py` currently speaks Ollama's `/api/chat` directly.
 
 - Quality gate: `ruff` clean, `mypy --strict` clean on 70 files, 234 tests
   passing, `tsc --noEmit` clean, `eslint` clean, `next build` succeeding.
