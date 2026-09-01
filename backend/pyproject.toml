@@ -67,4 +67,5 @@ testpaths = ["tests"]
 markers = [
     "integration: requires live Postgres and Redis",
     "llm: requires a running Ollama with the configured embedding model pulled",
+    "sandbox: requires a running Docker daemon and the python:3.11-slim image",
 ]
