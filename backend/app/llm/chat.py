@@ -78,6 +78,31 @@ def answer_question(
     one reproducible and therefore diagnosable, which matters more here than
     variety.
     """
+    return complete(
+        system=SYSTEM_PROMPT,
+        user=(
+            f"Sources retrieved from the codebase:\n\n{prompt_context}\n\n"
+            f"Question: {question}"
+        ),
+        model=model,
+        temperature=temperature,
+    )
+
+
+def complete(
+    *,
+    system: str,
+    user: str,
+    model: str | None = None,
+    temperature: float = 0.1,
+) -> ChatCompletion:
+    """One chat completion with an explicit system prompt.
+
+    The primitive both callers share. The agent loop needs its own system
+    prompt — it is choosing tools, not writing a cited answer — and routing it
+    through ``answer_question`` would silently hand it the citation
+    instructions instead.
+    """
     settings = get_settings()
     resolved_model = model or settings.llm_model
 
@@ -86,14 +111,8 @@ def answer_question(
         "stream": False,
         "options": {"temperature": temperature},
         "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {
-                "role": "user",
-                "content": (
-                    f"Sources retrieved from the codebase:\n\n{prompt_context}\n\n"
-                    f"Question: {question}"
-                ),
-            },
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
         ],
     }
 
