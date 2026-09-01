@@ -6,7 +6,7 @@ to help with real software engineering tasks: answering questions about the
 code, investigating bugs, running tests safely in a sandbox, and proposing
 patches for human approval.
 
-> ### Current status: Stage 1, milestone 6 of 9 — measured retrieval
+> ### Current status: Stage 1, milestone 8 of 9 — inspectable retrieval
 >
 > Infrastructure, GitHub OAuth, repository connection, ingestion, embeddings
 > into pgvector and **hybrid retrieval (vector + full-text, rank-fused) are
@@ -14,11 +14,16 @@ patches for human approval.
 > implemented yet, and reranking is a deliberately inert placeholder until
 > milestone 7.
 >
-> Retrieval quality is now **measured**, not asserted: 26 labelled questions,
-> three configurations, Recall@K and Precision@K from real runs. Hybrid beats
-> both baselines on recall past rank 1 and loses to vector-only at rank 1. The
-> numbers, four findings and the benchmark's own limitations are in
-> [`docs/README.md`](docs/README.md).
+> Retrieval is **measured and inspectable**: 40 labelled questions across a
+> tuning and a held-out set, and a UI showing every candidate with the scores
+> behind its rank. Role-weighted reranking is the largest measured gain in the
+> project (held-out R@5 0.750 → 0.821, MRR 0.661 → 0.774).
+>
+> **Chat answers are not yet trustworthy.** The models that fit in this
+> machine's memory cite unreliably and make factual errors, with the right code
+> in front of them. Retrieval is not the bottleneck; the model is. See
+> [`docs/README.md`](docs/README.md) and the draft
+> [ADR-013](docs/adr/ADR-013-cloud-llm-provider.md).
 >
 > [`docs/README.md`](docs/README.md) tracks exactly what is built, what is
 > verified, and what remains. Nothing is described as working until it has
@@ -35,6 +40,7 @@ patches for human approval.
 | Parsing | tree-sitter, AST-aware chunking (ADR-002) |
 | Embeddings | Ollama — `nomic-embed-text`, 768-dim, pgvector + HNSW |
 | Retrieval | Hybrid: pgvector cosine + Postgres full-text, RRF-fused (ADR-011) |
+| Reranking | Role-weighted, path-based (ADR-012) |
 | LLM | Ollama — `qwen2.5-coder:7b` *(planned)* |
 | Auth | GitHub OAuth, backend-owned; signed HttpOnly session cookie |
 | Sandbox | Docker, isolated per run *(planned)* |

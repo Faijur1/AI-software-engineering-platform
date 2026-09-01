@@ -28,7 +28,7 @@ planned. Documents describing later milestones mark unbuilt sections as
 | 5 | Hybrid retrieval (vector + full-text), merge, dedupe | ✅ **Done — verified** |
 | 6 | Evaluation harness, labelled benchmark, Recall@K / Precision@K | ✅ **Done — verified** |
 | 7 | Reranking + chat answers with citations | ⚠️ **Partial — see below** |
-| 8 | RAG inspector UI | ⬜ Not started |
+| 8 | RAG inspector UI | ✅ **Done — verified** |
 | 9 | Agent loop, tools, Docker sandbox, patch proposal + diff viewer | ⬜ Not started |
 
 ### Milestone 1 — what was verified
@@ -382,3 +382,46 @@ interface: `app/llm/chat.py` currently speaks Ollama's `/api/chat` directly.
 
 - Quality gate: `ruff` clean, `mypy --strict` clean on 70 files, 234 tests
   passing, `tsc --noEmit` clean, `eslint` clean, `next build` succeeding.
+
+### Milestone 8 — what was verified
+
+The inspector shows **every** candidate the retrievers produced, not just the
+ones selected. Verified against a real query on the live index — "what stops
+secret files from being indexed", 81 fused candidates from 50 vector + 50
+keyword:
+
+- All 81 are returned, in the order the reranker produced, with `selected`
+  marking the 6 that reached the answer's context. The selected ids match
+  `results` exactly.
+- Each row carries both retrievers' own score **and rank**, the reranker score,
+  and the file role. Absent scores render as `—` rather than 0.0000, so
+  "not scored by this retriever" cannot be misread as "scored badly".
+- Filtering by method, role, or selected-only does not renumber rows: rank is
+  position in the full ordered list, so a filtered view cannot misrepresent
+  where something actually placed.
+
+It immediately made two things visible that were previously only inferable:
+
+- **`README.md` had the highest fused score of all 81 candidates** (0.03028)
+  and was demoted to rank 9 by role weighting. ADR-012's mechanism, shown
+  rather than argued.
+- **`is_secret_path` — arguably the best answer — sat at rank 18**, found by
+  vector search alone. Keyword search missed it entirely. That is a concrete,
+  actionable retrieval gap the aggregate metrics could not point at.
+
+Search was also switched to the same reranker chat uses. An inspector
+explaining a different configuration from the one that produces answers would
+be worse than no inspector, and the two had silently diverged when role
+weighting was added to chat.
+
+- Quality gate: `ruff` clean, `mypy --strict` clean, 242 tests passing,
+  `tsc --noEmit` clean, `eslint` clean, `next build` succeeding.
+
+### Not yet decided: where answers are generated
+
+[ADR-013](adr/ADR-013-cloud-llm-provider.md) is a **draft**, written so the
+options are laid out before the decision rather than after it. It covers
+staying local, moving to a cloud LLM, or a provider interface with per-
+repository opt-in, and it treats the security trade-off — private repository
+source leaving the machine — as the substance of the decision rather than a
+footnote. No decision has been made.

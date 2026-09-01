@@ -6,7 +6,7 @@ import type { User } from "@/features/auth/types";
 import { IndexButton } from "@/features/repositories/IndexButton";
 import { RepositoryActionButton } from "@/features/repositories/RepositoryActionButton";
 import { ChatPanel } from "@/features/chat/ChatPanel";
-import { SearchPanel } from "@/features/search/SearchPanel";
+import { InspectorPanel } from "@/features/search/InspectorPanel";
 import {
   connectRepository,
   disconnectRepository,
@@ -122,7 +122,7 @@ export default async function RepositoriesPage({ searchParams }: PageProps) {
       </section>
 
       {searchable && <ChatPanel repositoryId={searchable.id} />}
-      {searchable && <SearchPanel repositoryId={searchable.id} />}
+      {searchable && <InspectorPanel repositoryId={searchable.id} />}
 
       <section className="mt-10">
         <h2 className="text-sm font-medium text-black/70 dark:text-white/70">

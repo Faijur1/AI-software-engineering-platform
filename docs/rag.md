@@ -221,15 +221,43 @@ Enforces a token budget, preserves file and line metadata for citations, and
 filters strictly by `repository_id` so chunks from different repositories can
 never be mixed.
 
-## RAG inspector
+## RAG inspector — implemented (milestone 8)
 
-The retrieval path is inspectable in the UI. For every candidate:
+The retrieval path is inspectable in the UI. For every candidate: file, line
+range, retrieval method (vector / keyword / both), each retriever's own score
+and rank, the reranker score, the file role, whether it was selected, and the
+code excerpt.
 
-file, line range, retrieval method (vector / keyword / both), retrieval score,
-reranker score, selected or not, and the code excerpt.
+This exists so retrieval failures are diagnosable — the point is to see *why*
+an answer was wrong, not merely that it was.
 
-This exists so retrieval failures are diagnosable — the point is to be able to
-see *why* an answer was wrong, not merely that it was.
+**Every candidate, not just the chosen ones.** A view of the selected chunks
+cannot answer "why was the right one not chosen", which is the question a
+retrieval failure actually poses. `POST /repositories/{id}/search` with
+`include_candidates: true` returns the full fused set in final rerank order,
+with `selected` marked.
+
+Two properties the inspector depends on, both asserted by tests:
+
+- **Rank is the rank the pipeline produced.** Candidates come back ordered by
+  the reranker that actually ran, and filtering in the UI does not renumber
+  rows — a filtered view would otherwise misrepresent position.
+- **Search runs the same reranker as chat.** An inspector explaining a
+  different configuration from the one that generates answers would be worse
+  than none.
+
+Absent scores render as `—`, never as zero: a chunk found only by vector search
+has no keyword score, and showing 0.0000 would read as "scored badly" rather
+than "not scored".
+
+What it makes visible, from a real run of "what stops secret files from being
+indexed":
+
+- `README.md` had the **highest fused score** of all 81 candidates (0.03028)
+  and was demoted to rank 9 by role weighting — the mechanism from ADR-012,
+  visible rather than inferred.
+- `is_secret_path`, arguably the best answer, sat at **rank 18** and was found
+  by vector search alone; keyword search missed it entirely.
 
 ## Evaluation — implemented (milestone 6)
 

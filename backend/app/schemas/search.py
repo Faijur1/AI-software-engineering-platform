@@ -13,6 +13,10 @@ class SearchRequest(BaseModel):
     query: str = Field(min_length=1, max_length=1000)
     # Bounded so one request cannot ask for the whole index.
     limit: int = Field(default=10, ge=1, le=50)
+    # When true the response also carries every fused candidate, selected or
+    # not. Off by default because it is a much larger payload and only the
+    # inspector needs it.
+    include_candidates: bool = False
 
 
 class SearchHit(BaseModel):
@@ -40,6 +44,11 @@ class SearchHit(BaseModel):
     # Null while the reranker is a passthrough. Null means "not reranked",
     # never "reranked and unchanged".
     rerank_score: float | None = None
+    # Whether this candidate survived reranking into the answer's context.
+    selected: bool = False
+    # What kind of file it came from. The role-weighted reranker multiplies by
+    # this, so a surprising rank is explained by it more often than not.
+    role: str | None = None
 
 
 class SearchResponse(BaseModel):
@@ -58,3 +67,6 @@ class SearchResponse(BaseModel):
     # Surfaced so the UI can say the results are not reranked yet, rather than
     # implying a quality step that has not happened.
     reranker_is_passthrough: bool
+    # Every fused candidate, in final order. Populated only when the request
+    # asked for it; None means "not requested", never "there were none".
+    candidates: list[SearchHit] | None = None

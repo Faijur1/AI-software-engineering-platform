@@ -155,8 +155,8 @@ a user; an unexpected exception is logged in full and reported generically.
 Synchronous, unlike indexing: one embedding call plus two indexed queries, so
 it answers in well under a second and needs no job.
 
-Request is `{query, limit}`. The response carries per-result evidence, not just
-a ranking:
+Request is `{query, limit, include_candidates}`. The response carries
+per-result evidence, not just a ranking:
 
 ```json
 {
@@ -184,6 +184,11 @@ be explained; that is what the inspector reads in milestone 8.
 `rerank_score` is `null` while the reranker is a passthrough. Null means *not
 reranked*, never *reranked and unchanged*, and `reranker_is_passthrough` says
 so explicitly so no UI implies a step that has not happened.
+
+With `include_candidates: true` the response also carries `candidates` — every
+fused candidate in final rerank order, each with `selected` and `role`. This is
+what the RAG inspector reads. It is off by default because the payload is much
+larger, and `null` means *not requested*, never *none found*.
 
 `notes` reports degradation: a stopword-only query, or an embedding backend
 that is down. A half-working hybrid search is stated rather than silently

@@ -18,7 +18,7 @@ rather than a restructuring.
 from __future__ import annotations
 
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Final
 
 from sqlalchemy.orm import Session
@@ -46,6 +46,11 @@ class RetrievalResult:
     trace: RetrievalTrace
     reranker: str
     reranker_is_passthrough: bool
+    # Every fused candidate, in final order, each carrying its per-retriever
+    # scores and whether it was selected. This is what the RAG inspector reads:
+    # seeing only the chosen chunks cannot answer "why was the right one not
+    # chosen", which is the question a retrieval failure actually poses.
+    candidates: list[RetrievedChunk] = field(default_factory=list)
 
 
 def retrieve(
@@ -117,6 +122,17 @@ def retrieve(
     selected = active_reranker.rerank(query, fused, limit=limit)
     trace.returned = len(selected)
 
+    # rerank() returns only the winners, but it marks and scores every
+    # candidate it was given, so the full list is re-sorted here rather than
+    # widening the Reranker protocol just to serve the inspector.
+    ordered = sorted(
+        fused,
+        key=lambda chunk: (
+            -(chunk.rerank_score if chunk.rerank_score is not None else chunk.fused_score),
+            str(chunk.chunk_id),
+        ),
+    )
+
     logger.info(
         "retrieval_complete",
         repository_id=str(repository_id),
@@ -131,4 +147,5 @@ def retrieve(
         trace=trace,
         reranker=active_reranker.name,
         reranker_is_passthrough=active_reranker.is_passthrough,
+        candidates=ordered,
     )

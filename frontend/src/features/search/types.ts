@@ -16,6 +16,10 @@ export interface SearchHit {
   keyword_rank: number | null;
   /** Null means "not reranked" — never "reranked and unchanged". */
   rerank_score: number | null;
+  /** Whether this candidate survived into the answer's context. */
+  selected: boolean;
+  /** source | test | docs | config — what the reranker multiplied by. */
+  role: string | null;
 }
 
 export interface SearchResponse {
@@ -28,4 +32,6 @@ export interface SearchResponse {
   notes: string[];
   reranker: string;
   reranker_is_passthrough: boolean;
+  /** Every fused candidate. Null means "not requested", not "none found". */
+  candidates: SearchHit[] | null;
 }

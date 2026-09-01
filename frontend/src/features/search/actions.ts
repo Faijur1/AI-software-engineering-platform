@@ -12,6 +12,7 @@ export interface SearchResult {
 export async function search(
   repositoryId: string,
   query: string,
+  includeCandidates = false,
 ): Promise<SearchResult> {
   if (!query.trim()) return { response: null, error: null };
 
@@ -21,7 +22,11 @@ export async function search(
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query, limit: 10 }),
+        body: JSON.stringify({
+          query,
+          limit: 10,
+          include_candidates: includeCandidates,
+        }),
         // One embedding call plus two indexed lookups; comfortably under this.
         timeoutMs: 30_000,
       },

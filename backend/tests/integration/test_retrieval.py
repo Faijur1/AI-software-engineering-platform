@@ -414,3 +414,81 @@ def test_lexemes_that_stem_twice_still_match(indexed: uuid.UUID) -> None:
 
     assert results, "a doubly-stemming identifier must still be findable"
     assert results[0].symbol == "something_else"
+
+
+def test_the_inspector_sees_every_candidate_not_just_the_chosen(
+    indexed: uuid.UUID,
+) -> None:
+    """The point of the inspector: explain why the right chunk was not chosen.
+
+    A result set containing only the winners cannot answer that question, so
+    retrieval reports the full fused list with selection marked.
+    """
+    embedder = ControlledEmbedder()
+
+    with session_scope() as session:
+        result = retrieve(
+            session,
+            embedder,
+            repository_id=indexed,
+            query="github_callback",
+            limit=2,
+        )
+
+    assert len(result.chunks) == 2
+    assert len(result.candidates) == result.trace.fused_candidates
+    assert len(result.candidates) > len(result.chunks)
+
+    selected = [c for c in result.candidates if c.selected]
+    assert [c.chunk_id for c in selected] == [c.chunk_id for c in result.chunks]
+
+
+def test_candidates_are_ordered_by_the_reranker_that_ran(
+    indexed: uuid.UUID,
+) -> None:
+    """Rank shown must be the rank the pipeline produced, not fusion order."""
+    from app.rag.reranker import RoleWeightedReranker
+
+    embedder = ControlledEmbedder()
+
+    with session_scope() as session:
+        result = retrieve(
+            session,
+            embedder,
+            repository_id=indexed,
+            query="github_callback",
+            limit=2,
+            reranker=RoleWeightedReranker(),
+        )
+
+    scores = [c.rerank_score for c in result.candidates]
+    assert all(s is not None for s in scores)
+    assert scores == sorted(scores, reverse=True)  # type: ignore[type-var]
+    # And the top of that order is exactly what was selected.
+    assert result.candidates[0].chunk_id == result.chunks[0].chunk_id
+
+
+def test_a_demoted_candidate_is_still_visible_with_its_scores(
+    indexed: uuid.UUID,
+) -> None:
+    """Role weighting demotes prose; the inspector must still show it, and show
+    the fused score it would have had."""
+    from app.rag.reranker import RoleWeightedReranker
+
+    embedder = ControlledEmbedder()
+    embedder.query_direction = 1  # the README
+
+    with session_scope() as session:
+        result = retrieve(
+            session,
+            embedder,
+            repository_id=indexed,
+            query="oauth callback",
+            limit=1,
+            reranker=RoleWeightedReranker(),
+        )
+
+    readme = next(c for c in result.candidates if c.file_path == "README.md")
+    # Present, scored by both stages, and the demotion is legible.
+    assert readme.rerank_score is not None
+    assert readme.rerank_score < readme.fused_score
