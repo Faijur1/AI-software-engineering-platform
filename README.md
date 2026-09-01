@@ -6,12 +6,13 @@ to help with real software engineering tasks: answering questions about the
 code, investigating bugs, running tests safely in a sandbox, and proposing
 patches for human approval.
 
-> ### Current status: Stage 1, milestone 2 of 9 — GitHub sign-in
+> ### Current status: Stage 1, milestone 3 of 9 — repository ingestion
 >
-> The infrastructure, configuration, logging, migrations, health endpoint,
-> frontend shell, GitHub OAuth and repository connection are built and verified.
-> **Repository ingestion, RAG, the LLM integration and the agent are not
-> implemented yet.**
+> Infrastructure, configuration, logging, migrations, health, the frontend
+> shell, GitHub OAuth, repository connection, and **ingestion — discovery,
+> filtering, tree-sitter parsing and chunking — are built and verified.**
+> Embeddings, retrieval, the LLM integration and the agent are not implemented
+> yet.
 >
 > [`docs/README.md`](docs/README.md) tracks exactly what is built, what is
 > verified, and what remains. Nothing is described as working until it has
@@ -24,7 +25,8 @@ patches for human approval.
 | Frontend | Next.js 16, React 19, TypeScript (strict), Tailwind |
 | Backend | FastAPI, Python 3.11, SQLAlchemy 2, Pydantic v2 |
 | Database | PostgreSQL 16 + pgvector |
-| Queue | Redis + RQ *(planned)* |
+| Queue | Redis + RQ (ADR-003) |
+| Parsing | tree-sitter, AST-aware chunking (ADR-002) |
 | LLM | Ollama — `qwen2.5-coder:7b`, `nomic-embed-text` *(planned)* |
 | Auth | GitHub OAuth, backend-owned; signed HttpOnly session cookie |
 | Sandbox | Docker, isolated per run *(planned)* |
@@ -82,12 +84,20 @@ py -3.11 -m venv .venv                    # Windows; use python3.11 elsewhere
 cd frontend
 npm install
 npm run dev
+
+# Ingestion worker (in a third terminal) — required for indexing
+cd backend
+./.venv/Scripts/python.exe -m app.workers.run_worker
 ```
+
+Without the worker running, indexing jobs queue and stay `queued`. Everything
+else works.
 
 Then open <http://localhost:3000>. The page shows live backend and dependency
 status, and a **Sign in with GitHub** button. After signing in you land on
-`/repositories`, where you can connect the repositories this platform may read.
-<http://localhost:8000/docs> has the interactive API reference.
+`/repositories`, where you can connect the repositories this platform may read,
+then **Index** one — the progress shown is reported by the worker, not
+simulated. <http://localhost:8000/docs> has the interactive API reference.
 
 Without `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` the rest of the
 application still runs; only sign-in is unavailable, and it says so rather than
@@ -111,6 +121,11 @@ docker compose start redis    # recovers
   no GitHub writes.
 - Rotating `TOKEN_ENCRYPTION_KEY` invalidates every stored token — users simply
   sign in again.
+- Secret-bearing files (`.env`, private keys, credentials) are excluded from
+  indexing before any other rule is applied, so they are never parsed, never
+  stored, and can never be quoted back by the LLM. Repository archives are
+  treated as untrusted input: extraction rejects path traversal and escaping
+  symlinks, and both download and expanded size are bounded.
 
 See [`docs/security.md`](docs/security.md) for the full model.
 

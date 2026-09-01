@@ -21,13 +21,13 @@ backend/
 │   ├── schemas/                Pydantic request/response models
 │   ├── routes/                 HTTP layer only — no business logic
 │   ├── services/               business logic (github.py, users.py)
-│   ├── ingestion/              (planned) discovery, filters, parser, chunker
+│   ├── ingestion/              languages, filters, fetcher, discovery, chunker, service
 │   ├── rag/                    (planned) retrievers, merge, rerank, context
 │   ├── llm/                    (planned) LLMProvider + implementations
 │   ├── agent/                  (planned) engine, state, tools/
 │   ├── sandbox/                (planned) Docker runner
-│   ├── queue/                  (planned) queue interface + RQ backend
-│   └── workers/                (planned) worker entrypoints
+│   ├── queue/                  queue interface + RQ backend (ADR-003)
+│   └── workers/                worker entrypoints
 ├── migrations/                 Alembic
 ├── tests/{unit,integration}/
 └── eval/                       (planned) benchmark + metrics
@@ -160,3 +160,49 @@ Repository queries are filtered on `user_id` as well as the primary key, so
 another user's repository is indistinguishable from one that does not exist.
 Connecting is authorised by re-fetching the repository with the caller's own
 token — never by trusting an identifier from the request body.
+
+### `ingestion/`
+
+Five modules, split so each is testable on its own rather than only through a
+full run:
+
+`languages.py`
+    Extension → grammar name. A language is listed only if its grammar actually
+    loads, checked at import; claiming support the parser cannot deliver would
+    surface as a failure mid-index rather than as a clean fallback. Parsers are
+    cached, because indexing asks for the same handful thousands of times.
+
+`filters.py`
+    Policy only, no filesystem. The secret exclusions are ordered ahead of
+    every convenience check so a later reordering cannot let a credential
+    through, and `is_secret_path` is public specifically so the security tests
+    can assert it directly rather than through the pipeline.
+
+`fetcher.py`
+    Downloads and safely extracts the tarball (ADR-010).
+
+`discovery.py`
+    Filesystem traversal only. Prunes excluded directories instead of walking
+    them, never follows symlinks, and treats a strict UTF-8 decode as the real
+    binary test — the extension list is only a cheap first pass.
+
+`chunker.py`
+    AST chunking with named degradations (ADR-002). Never raises: a file that
+    cannot be parsed falls back to size-based chunking.
+
+`service.py`
+    Orchestration and persistence. Progress is delivered through a callback
+    rather than by touching the job row, so this module knows nothing about how
+    progress is reported and can be tested without a queue.
+
+### `workers/`
+
+`ingestion.py` owns the job lifecycle; `service.py` owns the work. Every exit
+path leaves the job in a terminal state — a job stuck at `running` forever is
+worse than one marked failed, because the user can retry a failure but cannot
+interpret a spinner that never stops. Progress updates run in their own short
+transactions so they are visible to the polling UI while the long indexing
+transaction is still open.
+
+`run_worker.py` selects `SimpleWorker` where `os.fork` is unavailable, which is
+what makes the worker run on Windows.

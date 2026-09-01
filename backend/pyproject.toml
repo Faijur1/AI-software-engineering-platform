@@ -24,6 +24,9 @@ dependencies = [
     "httpx>=0.27",          # GitHub API client (milestone 2)
     "pyjwt>=2.10",          # session cookie signing (milestone 2)
     "cryptography>=44.0",   # GitHub token encryption at rest (milestone 2)
+    "rq>=1.16",                        # background job queue, ADR-003 (milestone 3)
+    "tree-sitter>=0.23",               # AST-aware chunking, ADR-002 (milestone 3)
+    "tree-sitter-language-pack>=0.7",  # prebuilt grammars, one wheel per platform
 ]
 
 [project.optional-dependencies]
@@ -54,7 +57,7 @@ strict = true
 plugins = ["pydantic.mypy"]
 # Third-party packages without bundled type stubs.
 [[tool.mypy.overrides]]
-module = ["redis.*"]
+module = ["redis.*", "rq.*", "tree_sitter_language_pack.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

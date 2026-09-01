@@ -3,6 +3,7 @@ import Link from "next/link";
 import { SignInButton } from "@/features/auth/SignInButton";
 import { UserMenu } from "@/features/auth/UserMenu";
 import type { User } from "@/features/auth/types";
+import { IndexButton } from "@/features/repositories/IndexButton";
 import { RepositoryActionButton } from "@/features/repositories/RepositoryActionButton";
 import {
   connectRepository,
@@ -88,14 +89,21 @@ export default async function RepositoriesPage({ searchParams }: PageProps) {
                   </p>
                   <p className="mt-0.5 text-xs text-black/50 dark:text-white/50">
                     {repo.default_branch} · {formatStatus(repo.index_status)}
+                    {repo.indexed_at && ` · ${formatWhen(repo.indexed_at)}`}
                   </p>
                 </div>
-                <RepositoryActionButton
-                  variant="secondary"
-                  label="Disconnect"
-                  pendingLabel="Disconnecting…"
-                  action={disconnectRepository.bind(null, repo.id)}
-                />
+                <div className="flex shrink-0 items-center gap-2">
+                  <IndexButton
+                    repositoryId={repo.id}
+                    indexStatus={repo.index_status}
+                  />
+                  <RepositoryActionButton
+                    variant="secondary"
+                    label="Disconnect"
+                    pendingLabel="Disconnecting…"
+                    action={disconnectRepository.bind(null, repo.id)}
+                  />
+                </div>
               </li>
             ))}
           </ul>
@@ -210,7 +218,13 @@ function parsePage(raw: string | undefined): number {
 }
 
 function formatStatus(status: ConnectedRepository["index_status"]): string {
-  // Milestone 2 connects repositories; indexing arrives in milestone 3, so the
-  // only status a repository can currently hold is "not indexed".
   return status === "not_indexed" ? "not indexed yet" : status.replace("_", " ");
+}
+
+/** Render a timestamp the server produced, without inventing precision. */
+function formatWhen(iso: string): string {
+  const when = new Date(iso);
+  return Number.isNaN(when.getTime())
+    ? ""
+    : `indexed ${when.toLocaleDateString()} ${when.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
 }

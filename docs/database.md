@@ -46,22 +46,64 @@ users may each connect the same public repository independently.
 because adding a value to a native enum requires a migration that cannot run
 inside a transaction.
 
+### `files`
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `id` | uuid PK | |
+| `repository_id` | uuid FK → `repositories.id` | cascade delete, indexed |
+| `path` | text | repository-relative, forward slashes on every platform |
+| `language` | varchar(32), null | null means no grammar — chunked by size |
+| `content_hash` | varchar(64) | SHA-256 of the bytes; drives incremental re-indexing |
+| `commit_sha` | varchar(40) | the revision this content came from |
+| `size_bytes` | integer | |
+
+Unique on `(repository_id, path)`: re-indexing updates the row in place, so the
+table stays the size of the working tree rather than the size of history.
+
+### `code_chunks`
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `id` | uuid PK | |
+| `file_id` | uuid FK → `files.id` | cascade delete, indexed |
+| `repository_id` | uuid FK → `repositories.id` | denormalised; see below |
+| `content` | text | |
+| `symbol` | varchar(512), null | qualified where useful (`Worker.run`) |
+| `kind` | enum | `function \| method \| class \| block \| fragment \| fallback` |
+| `start_line`, `end_line` | integer | 1-based, inclusive — what citations point at |
+| `chunk_hash` | varchar(64) | SHA-256 of the content |
+| `content_tsv` | tsvector GENERATED | keyword retrieval, milestone 5 |
+
+`embedding vector(768)` and `embedding_model` arrive in **milestone 4**, with
+the HNSW index, rather than being created empty now.
+
+`chunk_hash` is indexed only through the composite
+`(repository_id, chunk_hash)`. Every lookup is already scoped to a repository,
+so a second standalone index would never be the one chosen.
+
+### `jobs`
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `id` | uuid PK | |
+| `type` | enum | `index_repository` |
+| `status` | enum | `queued \| running \| succeeded \| failed`, indexed |
+| `repository_id` | uuid FK → `repositories.id` | cascade delete, indexed |
+| `progress` | integer | 0–100, coarse by design |
+| `stage` | varchar(64), null | short human-readable stage |
+| `started_at`, `finished_at` | timestamptz, null | |
+| `error` | text, null | only messages safe to show a user |
+
+Redis holds the queue; this table holds the record. Keeping the record in
+Postgres is what makes a lost Redis job detectable rather than silent (ADR-003),
+and gives the UI something durable to poll.
+
 ## Planned tables
 
 Shape is settled; they are created in the milestone that first needs them.
 
 ```
-files        (id, repository_id FK, path, language, content_hash, commit_sha,
-              unique(repository_id, path))
-
-code_chunks  (id, file_id FK, repository_id FK, content, symbol, kind,
-              start_line, end_line, chunk_hash,
-              embedding vector(768), embedding_model,
-              content_tsv tsvector GENERATED)
-
-jobs         (id, type, status, progress, repository_id FK,
-              started_at, finished_at, error)
-
 agent_runs   (id, trace_id, repository_id FK, task, status, iterations,
               started_at, finished_at)
 
@@ -92,10 +134,10 @@ with `content`.
 
 | Index | Purpose |
 | --- | --- |
-| HNSW on `code_chunks.embedding` (`vector_cosine_ops`) | semantic retrieval |
-| GIN on `code_chunks.content_tsv` | keyword retrieval |
-| btree on `code_chunks.repository_id` | repository isolation filter |
-| btree on `code_chunks.chunk_hash` | skip re-embedding unchanged chunks |
+| HNSW on `code_chunks.embedding` (`vector_cosine_ops`) | semantic retrieval — milestone 4 |
+| GIN on `code_chunks.content_tsv` | keyword retrieval — built |
+| btree on `code_chunks.repository_id` | repository isolation filter — built |
+| btree on `(code_chunks.repository_id, chunk_hash)` | skip re-embedding unchanged chunks — built |
 | btree on `events.trace_id` | trace reconstruction |
 
 HNSW is chosen over IVFFlat because it does not need a training step and behaves

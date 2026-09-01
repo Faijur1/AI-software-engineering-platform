@@ -1,24 +1,52 @@
 # RAG architecture
 
-> **Status: planned (milestones 3–8).** None of this is implemented yet. This
-> document records the intended design so it can be reviewed before it is built.
+> **Status:** ingestion (this page's first section) is **built and verified**
+> as of milestone 3. Retrieval, reranking, the inspector and evaluation
+> (milestones 5–8) are still design only, and are marked below.
 
-## Ingestion
+## Ingestion — implemented (milestone 3)
 
 ```
-GitHub -> clone/fetch -> discover files -> filter -> parse (tree-sitter)
-       -> chunk by logical unit -> attach metadata -> embed -> pgvector
+GitHub -> tarball snapshot -> discover files -> filter -> parse (tree-sitter)
+       -> chunk by logical unit -> attach metadata -> [embed -> pgvector]
 ```
+
+Everything up to and including chunking runs today; embedding is milestone 4.
+
+The snapshot is fetched as a tarball rather than cloned, so the access token
+never enters a process argument list (ADR-010). Extraction rejects absolute
+paths, `..` traversal and symlinks escaping the tree, and bounds both the
+download and the expanded size — repository archives are untrusted input.
+
+Work runs in a background worker via Redis + RQ (ADR-003). `POST
+/repositories/{id}/index` returns **202** with a job to poll; no HTTP request
+ever waits for indexing.
 
 ### Filtering
 
 Excluded from indexing: `.git/`, `node_modules/`, `dist/`, `build/`,
 `coverage/`, lockfiles, minified and generated files, binaries, files above a
-size threshold, and secret-bearing files (`.env`, private keys, credentials).
+size threshold (512 KB), and secret-bearing files (`.env`, private keys,
+credentials).
 
 Two distinct reasons, worth keeping separate: most exclusions are about noise
 and cost, but the secret exclusions are a **security control** — those files
 must never reach the LLM.
+
+That separation is enforced in code, not just in prose. The secret check runs
+*before* every convenience check, so no later reordering of the cheap rules can
+let a credential through, and it is asserted by its own tests. Placeholder
+files (`.env.example` and friends) are allowed back in explicitly.
+
+Excluded directories are pruned rather than walked — descending into
+`node_modules` to reject each file individually costs hundreds of thousands of
+pointless stat calls. A consequence worth stating: files inside a pruned tree
+are never counted, so the report gives a count of *pruned directories* rather
+than implying a file count nobody measured. Symlinks are never followed; a
+repository can link to `/etc` or to itself.
+
+Every skip is counted by reason. A spike in `secret` or `not_utf8` is how a
+filtering bug becomes visible instead of silently shrinking the index.
 
 ### Chunking
 
@@ -32,6 +60,38 @@ fixed character windows (ADR-002). Metadata preserved per chunk:
 `chunk_hash` is what makes re-indexing incremental: a chunk whose hash is
 unchanged is not re-embedded. Files in languages without a grammar fall back to
 size-based chunking and are tagged so evaluation can measure them separately.
+
+Chunk kinds, and what each signals:
+
+| Kind | Meaning |
+| --- | --- |
+| `function` | a free function, whole |
+| `method` | a function inside a class; the symbol is qualified (`Worker.run`) |
+| `class` | a class small enough to be useful whole |
+| `block` | a run of module-level statements: imports, constants |
+| `fragment` | part of a unit too large for the budget, split by size |
+| `fallback` | a file with no grammar, split by size with overlap |
+
+The last two are named degradations, not hidden ones — evaluation can measure
+them separately instead of averaging them into the good case.
+
+A class above ~2.5 KB is indexed method by method instead of whole, so a
+retrieved chunk is something a developer can read rather than a wall of text
+that crowds out everything else in the context window. Decorators and `export`
+keywords stay attached to what they apply to: a route's decorator carries its
+path, and separating them loses the meaning.
+
+Malformed source never fails a run. tree-sitter is error-tolerant, and a file
+that still cannot be parsed falls back to size-based chunking — one broken file
+must not fail the index for an entire repository.
+
+### Incremental re-indexing
+
+A file whose `content_hash` is unchanged is not re-parsed and its chunk rows
+are reused untouched. A changed file has its old chunks deleted before the new
+ones are written, and a file deleted from the repository is removed from the
+index — otherwise a deleted function lingers and gets cited as if it still
+existed.
 
 ## Retrieval
 

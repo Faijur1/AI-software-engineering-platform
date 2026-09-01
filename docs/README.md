@@ -23,7 +23,7 @@ planned. Documents describing later milestones mark unbuilt sections as
 | --- | --- | --- |
 | 1 | Walking skeleton: compose, config, logging, migrations, `/health`, UI | ✅ **Done — verified** |
 | 2 | GitHub OAuth + repository listing | ✅ **Done — verified** |
-| 3 | Ingestion: discovery, filtering, tree-sitter parsing, chunking | ⬜ Not started |
+| 3 | Ingestion: discovery, filtering, tree-sitter parsing, chunking | ✅ **Done — verified** |
 | 4 | Embeddings + pgvector storage, incremental re-indexing | ⬜ Not started |
 | 5 | Hybrid retrieval (vector + full-text), merge, dedupe | ⬜ Not started |
 | 6 | Evaluation harness, labelled benchmark, Recall@K / Precision@K | ⬜ Not started |
@@ -89,3 +89,40 @@ Not only against the mock:
   [api.md](api.md). This was found during that verification — it had returned
   502, and the integration test had asserted the implemented behaviour rather
   than the documented contract. Both were corrected.
+
+### Milestone 3 — what was verified
+
+Against the **real** github.com, not only against fixtures:
+
+- A queued index of a real repository ran end to end through Redis + RQ and a
+  separate worker process: `POST /repositories/{id}/index` returned 202, the
+  job progressed through its stages, and it finished `succeeded`.
+- 81 files and 296 chunks were written, at commit `c2dc171` — the actual
+  current head of `origin/main`, resolved through the GitHub API rather than
+  assumed.
+- Symbols and line ranges are real: `Settings.is_production` as a `method` at
+  L76-78, `session_scope` as a `function` at L37-52, and so on, each pointing
+  at the code it names.
+- Chunk kinds across that run: 145 `function`, 64 `block`, 45 `fallback`,
+  37 `class`, 3 `fragment`, 2 `method`.
+- **Security, asserted against the indexed data:** zero `.env` files indexed,
+  zero chunks containing a real credential, zero `node_modules` files indexed.
+- **Incremental re-indexing:** re-queueing the same repository reported all
+  files unchanged and reused the identical chunk rows — the property that will
+  make re-embedding skippable in milestone 4.
+- The UI renders live progress from the backend, with no simulated bar: a
+  repository already indexed shows "Re-index" and its indexed timestamp.
+
+Also asserted by the suite, with fixtures rather than the network: secrets
+excluded ahead of every other rule, symlinks not followed, binary content
+rejected by a strict decode even under a `.py` name, unparseable source
+degrading instead of raising, deleted files removed from the index, chunks
+cascading when a repository is disconnected, and one user unable to read
+another's job.
+
+- Quality gate: `ruff` clean, `mypy --strict` clean on 44 files, 139 tests
+  passing, `tsc --noEmit` clean, `eslint` clean, `next build` succeeding.
+
+**Not built yet, by design:** embeddings and the `embedding` column arrive in
+milestone 4. Chunks are stored with their text and `content_tsv` only, so
+nothing here claims a working vector search.

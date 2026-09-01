@@ -20,7 +20,10 @@ from sqlalchemy import select
 from app.core.deps import CurrentUser, DbSession, GitHubToken
 from app.core.errors import NotFoundError
 from app.core.logging import get_logger
-from app.models.repository import Repository
+from app.models.job import Job, JobStatus, JobType
+from app.models.repository import IndexStatus, Repository
+from app.queue import get_queue
+from app.schemas.job import JobResponse
 from app.schemas.repository import (
     ConnectRepositoryRequest,
     GitHubRepositoryPage,
@@ -141,6 +144,77 @@ def connect_repository(
     return repository
 
 
+@router.post(
+    "/{repository_id}/index",
+    response_model=JobResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Queue indexing for a repository",
+)
+def index_repository(
+    repository_id: uuid.UUID,
+    user: CurrentUser,
+    session: DbSession,
+) -> Job:
+    """Queue an indexing run and return the job to poll.
+
+    202, never 200: the work has been accepted, not performed. Indexing takes
+    minutes, so no HTTP request waits for it (docs/api.md).
+    """
+    repository = _owned_repository(session, repository_id, user.id)
+
+    # Re-queueing a repository that is already being indexed would have two
+    # workers writing the same chunks. The existing job is returned instead, so
+    # a double-click is harmless and the client still gets something to poll.
+    active = session.execute(
+        select(Job)
+        .where(
+            Job.repository_id == repository.id,
+            Job.status.in_([JobStatus.queued, JobStatus.running]),
+        )
+        .order_by(Job.created_at.desc())
+    ).scalars().first()
+    if active is not None:
+        return active
+
+    job = Job(type=JobType.index_repository, repository_id=repository.id)
+    session.add(job)
+    repository.index_status = IndexStatus.queued
+    # Flushed so the row exists before the worker can possibly pick it up.
+    session.flush()
+
+    # Enqueued after the flush but inside the transaction: if the commit fails,
+    # the worker finds no job row and exits cleanly, which is the safe way for
+    # this race to resolve. The reverse order could hand the worker an id that
+    # never becomes a row.
+    get_queue().enqueue_index_repository(job.id)
+
+    logger.info(
+        "index_queued",
+        user_id=str(user.id),
+        repository=repository.full_name,
+        job_id=str(job.id),
+    )
+    return job
+
+
+def _owned_repository(
+    session: DbSession, repository_id: uuid.UUID, user_id: uuid.UUID
+) -> Repository:
+    """Load a repository the caller owns, or report it as absent.
+
+    Filtered on user_id as well as the primary key, so another user's
+    repository is indistinguishable from one that does not exist.
+    """
+    repository = session.execute(
+        select(Repository).where(
+            Repository.id == repository_id, Repository.user_id == user_id
+        )
+    ).scalar_one_or_none()
+    if repository is None:
+        raise NotFoundError("Repository not found")
+    return repository
+
+
 @router.delete(
     "/{repository_id}",
     status_code=status.HTTP_204_NO_CONTENT,
@@ -152,13 +226,4 @@ def disconnect_repository(repository_id: uuid.UUID, user: CurrentUser, session: 
     Filtered on ``user_id`` as well as the primary key, so another user's
     repository is indistinguishable from one that does not exist (404, not 403).
     """
-    repository = session.execute(
-        select(Repository).where(
-            Repository.id == repository_id, Repository.user_id == user.id
-        )
-    ).scalar_one_or_none()
-
-    if repository is None:
-        raise NotFoundError("Repository not found")
-
-    session.delete(repository)
+    session.delete(_owned_repository(session, repository_id, user.id))

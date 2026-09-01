@@ -68,6 +68,15 @@ class GitHubRepository:
     html_url: str
 
 
+def auth_headers(token: str) -> dict[str, str]:
+    """Standard API headers plus bearer auth, for callers outside this module.
+
+    Exposed so the ingestion fetcher does not have to reach for a private name
+    or reinvent the header set and drift from it.
+    """
+    return {**_HEADERS, "Authorization": f"Bearer {token}"}
+
+
 def authorize_url(state: str) -> str:
     """Build the URL the browser is redirected to in order to grant access."""
     settings = get_settings()

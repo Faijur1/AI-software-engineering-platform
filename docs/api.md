@@ -100,12 +100,45 @@ there *is* the authorisation check. A repository that token cannot see returns
 **404 `not_found`** — GitHub itself answers 404 rather than 403 for exactly the
 same reason, so the status maps straight through.
 
+### Indexing
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| POST | `/repositories/{id}/index` | Queue indexing; **202** with a job |
+| GET | `/jobs/{id}` | Job status and progress |
+
+`POST /repositories/{id}/index` returns **202 Accepted**, never 200: the work
+has been accepted, not performed. Indexing runs for minutes in a background
+worker, so no HTTP request waits for it.
+
+Queueing a repository that is already `queued` or `running` returns the
+**existing** job rather than creating a second one — two workers writing the
+same chunks would corrupt the index, and a double-click should be harmless.
+
+`GET /jobs/{id}` is joined to the owning repository and filtered on the caller,
+so a job id alone is not enough to read another user's progress.
+
+```json
+{
+  "id": "…",
+  "type": "index_repository",
+  "status": "running",
+  "repository_id": "…",
+  "progress": 45,
+  "stage": "parsing and chunking",
+  "error": null
+}
+```
+
+`status` is `queued | running | succeeded | failed`. `progress` is coarse and
+tied to stage boundaries — it exists to show that work is advancing, not to
+estimate completion. `error` carries only messages already judged safe to show
+a user; an unexpected exception is logged in full and reported generically.
+
 ## Planned endpoints
 
 | Method | Path | Purpose | Milestone |
 | --- | --- | --- | --- |
-| POST | `/repositories/{id}/index` | Queue indexing; returns a job | 3 |
-| GET | `/jobs/{id}` | Job status and progress | 3 |
 | POST | `/chat` | Ask a question; answer with citations | 7 |
 | POST | `/agents/run` | Start an agent run | 9 |
 | GET | `/agents/runs/{id}` | Run status and result | 9 |
