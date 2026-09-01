@@ -9,7 +9,7 @@ from app.core.config import get_settings
 from app.core.errors import register_exception_handlers
 from app.core.logging import configure_logging, get_logger
 from app.core.middleware import TraceMiddleware
-from app.routes import health
+from app.routes import auth, health, repositories
 
 logger = get_logger(__name__)
 
@@ -30,7 +30,9 @@ def create_app() -> FastAPI:
     app.add_middleware(TraceMiddleware)
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:3000"],
+        # A single explicit origin, not a wildcard: the session cookie is sent
+        # with credentials, and browsers reject "*" in that case anyway.
+        allow_origins=[settings.frontend_url],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -38,6 +40,8 @@ def create_app() -> FastAPI:
 
     register_exception_handlers(app)
     app.include_router(health.router)
+    app.include_router(auth.router)
+    app.include_router(repositories.router)
 
     logger.info("application_started", environment=settings.app_env.value)
     return app

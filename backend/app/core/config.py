@@ -11,7 +11,7 @@ from enum import StrEnum
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field, PostgresDsn, RedisDsn
+from pydantic import AliasChoices, Field, PostgresDsn, RedisDsn, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -45,9 +45,41 @@ class Settings(BaseSettings):
     db_pool_size: int = 5
     db_pool_max_overflow: int = 5
 
+    # ---------- GitHub OAuth (milestone 2) ----------
+    # Empty by default so the application still starts without credentials; the
+    # auth routes fail loudly with a configuration error instead, which keeps a
+    # missing secret from being mistaken for a broken sign-in.
+    github_client_id: str = ""
+    github_client_secret: SecretStr = SecretStr("")
+    # Read-only scopes only. Stage 1 performs no GitHub writes (docs/security.md).
+    github_scopes: str = "read:user user:email repo"
+
+    # ---------- Session / secrets ----------
+    # Signs the session cookie. Named NEXTAUTH_SECRET in .env for continuity
+    # with the original design; see ADR-009 for why the backend now owns OAuth.
+    session_secret: SecretStr = Field(
+        default=SecretStr(""), validation_alias=AliasChoices("SESSION_SECRET", "NEXTAUTH_SECRET")
+    )
+    session_ttl_seconds: int = 60 * 60 * 24 * 7
+    session_cookie_name: str = "aisep_session"
+    # Fernet key used to encrypt GitHub access tokens at rest.
+    token_encryption_key: SecretStr = SecretStr("")
+
+    # ---------- URLs ----------
+    # Where the browser is sent after a completed OAuth round trip, and the
+    # origin allowed to make credentialed cross-site calls to this API.
+    frontend_url: str = "http://localhost:3000"
+    # Public base URL of this API. The GitHub callback URL is derived from it,
+    # so it must match the OAuth App registration exactly.
+    backend_url: str = "http://localhost:8000"
+
     @property
     def is_production(self) -> bool:
         return self.app_env is AppEnv.production
+
+    @property
+    def github_callback_url(self) -> str:
+        return f"{self.backend_url.rstrip('/')}/auth/github/callback"
 
 
 @lru_cache(maxsize=1)

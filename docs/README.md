@@ -22,7 +22,7 @@ planned. Documents describing later milestones mark unbuilt sections as
 | # | Milestone | Status |
 | --- | --- | --- |
 | 1 | Walking skeleton: compose, config, logging, migrations, `/health`, UI | ✅ **Done — verified** |
-| 2 | GitHub OAuth + repository listing | ⬜ Not started |
+| 2 | GitHub OAuth + repository listing | ✅ **Done — verified** |
 | 3 | Ingestion: discovery, filtering, tree-sitter parsing, chunking | ⬜ Not started |
 | 4 | Embeddings + pgvector storage, incremental re-indexing | ⬜ Not started |
 | 5 | Hybrid retrieval (vector + full-text), merge, dedupe | ⬜ Not started |
@@ -47,3 +47,45 @@ Not merely "the code exists":
 - Quality gate: `ruff` clean, `mypy --strict` clean on 17 files, 13 tests
   passing (unit + integration), `tsc --noEmit` clean, `eslint` clean,
   `next build` succeeding.
+
+### Milestone 2 — what was verified
+
+- The full OAuth round trip runs end to end against the real database with
+  GitHub mocked at the HTTP layer: a completed callback creates a `users` row,
+  issues a working session, and `GET /auth/me` returns that user.
+- The GitHub access token is encrypted at rest — the test reads the raw column
+  and asserts the plaintext token does not appear in it, then decrypts it back.
+  It is absent from every response body and from the session cookie.
+- CSRF state is enforced: a callback with no state cookie, or a mismatched one,
+  redirects with `auth_error=invalid_state` and issues no session.
+- Session forgery is rejected: tampered signature, wrong secret, `alg: none`,
+  wrong issuer, and expired tokens each raise rather than authenticate.
+- Tenant isolation is asserted with two concurrently signed-in users: the second
+  cannot list or delete the first's repository, and gets 404 rather than 403.
+- Signing in again as a renamed GitHub account updates the existing user rather
+  than creating a second one.
+- Live check against the running server: `/auth/me` and `/repositories` return
+  401 unauthenticated; `/auth/github/login` returns 307 to github.com with the
+  state pinned in an HttpOnly cookie.
+- Quality gate: `ruff` clean, `mypy --strict` clean on 26 files, 62 tests
+  passing, `tsc --noEmit` clean, `eslint` clean, `next build` succeeding.
+
+#### Confirmed against the real github.com
+
+Not only against the mock:
+
+- A real browser sign-in created a `users` row with the correct GitHub id,
+  login, name, email and avatar.
+- The stored token is Fernet ciphertext (`gAAAAA…`, 140 chars) containing no
+  trace of the 40-character `gho_…` plaintext. It decrypts, and the decrypted
+  token successfully authenticates `GET /user` as that same account — so the
+  encryption round trip is proven by use, not merely by symmetry.
+- `GET /auth/me` returns that user and no token; without the cookie it is 401.
+- `GET /repositories/github` returned the account's real repositories with
+  correct language, visibility and `connected_id` values.
+- Connect is idempotent (a second POST returns the same id, not a duplicate),
+  disconnect returns 204 and then 404, and an unauthenticated POST is 401.
+- A repository the token cannot see returns **404 `not_found`**, matching
+  [api.md](api.md). This was found during that verification — it had returned
+  502, and the integration test had asserted the implemented behaviour rather
+  than the documented contract. Both were corrected.

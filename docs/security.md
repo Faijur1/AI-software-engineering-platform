@@ -45,8 +45,18 @@ another user returns 404 rather than 403.
 
 ### 4. Least-privilege GitHub access
 
-Stage 1 requests read-only scopes and performs no writes. Branch and PR creation
-arrive in Stage 2 behind an explicit human approval step.
+Stage 1 requests `read:user user:email repo` and performs no writes. No `write:`,
+`admin:` or `delete_` scope is requested, and a test asserts that. Branch and PR
+creation arrive in Stage 2 behind an explicit human approval step.
+
+### 5. Session handling
+
+The backend owns the OAuth flow end to end (ADR-009). The session cookie is
+HttpOnly, `SameSite=Lax`, and `Secure` outside development. It is a signed JWT
+whose algorithm and issuer are both pinned at verification, so neither an
+`alg: none` token nor a token minted by another service sharing the secret is
+accepted. The user is loaded from the database on every request rather than
+trusted from the token body, so a deleted account stops working immediately.
 
 ## Secrets
 
@@ -55,7 +65,13 @@ arrive in Stage 2 behind an explicit human approval step.
   through one validated settings object.
 - *Implemented*: error messages from connection failures are reduced to the
   exception type, because DSNs can carry credentials.
-- *Planned*: GitHub access tokens encrypted at rest with `TOKEN_ENCRYPTION_KEY`.
+- *Implemented*: GitHub access tokens are Fernet-encrypted with
+  `TOKEN_ENCRYPTION_KEY` before storage, so a database dump alone yields no
+  usable GitHub credentials. The token is never returned by any endpoint and
+  never reaches the browser.
+- *Implemented*: `SESSION_SECRET` and `TOKEN_ENCRYPTION_KEY` are required and
+  must be at least 32 characters. A missing or short secret raises a
+  configuration error rather than falling back to a default.
 - *Planned (Stage 3)*: AWS Secrets Manager instead of `.env`.
 
 Secret-bearing files (`.env`, private keys, credential files) are excluded
@@ -69,8 +85,9 @@ during ingestion and are never embedded or shown to the LLM.
 | Uniform error envelope; no internal detail leaked to clients | Implemented |
 | Structured logs with correlation IDs, no secrets logged | Implemented |
 | CORS restricted to the known frontend origin | Implemented |
-| Session auth (NextAuth JWT, verified backend-side) | Planned — milestone 2 |
-| Repository-level authorization | Planned — milestone 2 |
+| Session auth (backend-issued HS256 cookie, HttpOnly) | Implemented |
+| OAuth CSRF protection (`state`, cookie-pinned, constant-time compare) | Implemented |
+| Repository-level authorization (owner-scoped queries, 404 not 403) | Implemented |
 | Rate limiting on expensive endpoints | Planned |
 | Audit logging of agent actions and approvals | Planned |
 | RBAC (admin / developer / viewer) | Planned — Stage 3 |

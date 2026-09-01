@@ -15,11 +15,12 @@ backend/
 │   │   ├── logging.py          structlog + trace_id context var
 │   │   ├── middleware.py       TraceMiddleware (correlation + access log)
 │   │   ├── errors.py           exception hierarchy + handlers
-│   │   └── security.py         (planned) JWT verification, token encryption
+│   │   ├── security.py         session signing, token encryption at rest
+│   │   └── deps.py             current_user / github_token dependencies
 │   ├── models/                 SQLAlchemy ORM
 │   ├── schemas/                Pydantic request/response models
 │   ├── routes/                 HTTP layer only — no business logic
-│   ├── services/               (planned) business logic
+│   ├── services/               business logic (github.py, users.py)
 │   ├── ingestion/              (planned) discovery, filters, parser, chunker
 │   ├── rag/                    (planned) retrievers, merge, rerank, context
 │   ├── llm/                    (planned) LLMProvider + implementations
@@ -111,3 +112,51 @@ frontend/src/
 backend surfaces as an error state with a retry rather than a spinner that never
 resolves. Data fetching happens in Server Components; client components are used
 only where interactivity requires them.
+
+### `core/security.py`
+
+Two secrets with distinct jobs, deliberately not shared: `SESSION_SECRET` signs
+the session cookie (HS256), `TOKEN_ENCRYPTION_KEY` encrypts GitHub access tokens
+before storage (Fernet). Both are required and must be at least 32 characters —
+a missing or short secret raises `ConfigurationError` rather than falling back
+to a default, because a default here would be a permanent, silent hole.
+
+Verification pins both the algorithm and the issuer. Pinning the algorithm
+blocks `alg: none` signature stripping; pinning the issuer stops a token minted
+by some other service that happens to share the secret from being replayed as a
+session.
+
+### `core/deps.py`
+
+`current_user` is the one place a request becomes an identity, so no endpoint
+can be written without an authentication check by omission. It loads the user
+from the database on every request rather than trusting the token body, so a
+deleted account stops working immediately instead of at token expiry.
+
+`github_token` is a separate dependency: endpoints that only need an identity
+never decrypt a credential they have no use for.
+
+### `services/github.py`
+
+Every call to github.com goes through here, so the timeout, the failure mapping
+and the "never log a token" rule live in one place. Upstream failures become
+`ExternalServiceError` (502), which keeps "GitHub is broken" distinguishable
+from "we are broken" in both the API contract and the logs.
+
+Two GitHub behaviours are handled explicitly because they are easy to get
+wrong: a failed token exchange is reported with **HTTP 200** and an `error` field
+in the body, and a user with a private email address gets `null` from `/user`,
+requiring a fallback to the verified primary address from `/user/emails`.
+
+### `routes/auth.py`, `routes/repositories.py`
+
+The OAuth `state` is pinned in a short-lived HttpOnly cookie and compared in
+constant time, failing closed when either side is absent. The callback never
+renders an error page: the user is mid-navigation in a browser, so failures
+redirect to the frontend with a stable `auth_error` code and the frontend owns
+the presentation.
+
+Repository queries are filtered on `user_id` as well as the primary key, so
+another user's repository is indistinguishable from one that does not exist.
+Connecting is authorised by re-fetching the repository with the caller's own
+token — never by trusting an identifier from the request body.

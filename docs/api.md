@@ -63,11 +63,47 @@ When a dependency is down, `status` becomes `degraded` and that dependency
 reports `{"status": "unavailable", "error": "ConnectionError"}`. `error` is the
 exception *type* only — connection errors can embed credential-bearing DSNs.
 
+### Authentication
+
+The backend owns the GitHub OAuth round trip (ADR-009). Authenticated endpoints
+read an HttpOnly session cookie; without a valid one they return **401
+`unauthenticated`**.
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/auth/github/login` | 307 to GitHub; pins a CSRF `state` cookie |
+| GET | `/auth/github/callback` | Exchanges the code, sets the session, 303 to the frontend |
+| GET | `/auth/me` | The signed-in user |
+| POST | `/auth/logout` | Clears the session; 204 even without one |
+
+The callback never renders an error page. Failures redirect to the frontend
+with `?auth_error=<code>` — `access_denied`, `invalid_state`, `missing_code`,
+or the error envelope's `code`.
+
+### Repositories
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/repositories` | Repositories connected to this platform |
+| POST | `/repositories` | Connect one by `{owner, name}`; 201, idempotent |
+| DELETE | `/repositories/{id}` | Disconnect; 204 |
+| GET | `/repositories/github` | Live listing from GitHub, paginated |
+
+`GET /repositories/github` returns `{items, page, per_page, has_next}`. There is
+no total: GitHub does not report one for this endpoint, and inventing one would
+be a fabricated number. Each item carries `connected_id` — the local id if it is
+already connected, else `null`.
+
+`POST /repositories` takes owner and name, never a GitHub id. The server
+re-fetches the repository with the caller's own token; being able to see it
+there *is* the authorisation check. A repository that token cannot see returns
+**404 `not_found`** — GitHub itself answers 404 rather than 403 for exactly the
+same reason, so the status maps straight through.
+
 ## Planned endpoints
 
 | Method | Path | Purpose | Milestone |
 | --- | --- | --- | --- |
-| GET | `/repositories` | Connected repositories | 2 |
 | POST | `/repositories/{id}/index` | Queue indexing; returns a job | 3 |
 | GET | `/jobs/{id}` | Job status and progress | 3 |
 | POST | `/chat` | Ask a question; answer with citations | 7 |
