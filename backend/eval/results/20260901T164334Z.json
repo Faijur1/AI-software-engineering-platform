@@ -1,0 +1,4205 @@
+{
+  "repository": "Faijur1/AI-software-engineering-platform",
+  "commit": "1a797b75b4fdc58aa13b03d1c287178ef76ee13b",
+  "chunk_count": 604,
+  "question_count": 26,
+  "cutoffs": [
+    1,
+    3,
+    5,
+    10
+  ],
+  "reranker": "passthrough",
+  "configurations": {
+    "vector_only": {
+      "name": "vector_only",
+      "recall": {
+        "1": 0.5,
+        "3": 0.6538461538461539,
+        "5": 0.7307692307692307,
+        "10": 0.7307692307692307
+      },
+      "precision": {
+        "1": 0.5384615384615384,
+        "3": 0.2435897435897435,
+        "5": 0.16923076923076927,
+        "10": 0.08461538461538463
+      },
+      "mrr": 0.633974358974359,
+      "hit_rate": {
+        "1": 0.5384615384615384,
+        "3": 0.6923076923076923,
+        "5": 0.8076923076923077,
+        "10": 0.8076923076923077
+      },
+      "by_style": {
+        "identifier": {
+          "count": 9.0,
+          "recall@5": 0.8333333333333334,
+          "hit@5": 0.8888888888888888,
+          "mrr": 0.75
+        },
+        "conceptual": {
+          "count": 10.0,
+          "recall@5": 0.45,
+          "hit@5": 0.6,
+          "mrr": 0.42000000000000004
+        },
+        "mixed": {
+          "count": 7.0,
+          "recall@5": 1.0,
+          "hit@5": 1.0,
+          "mrr": 0.7904761904761904
+        }
+      },
+      "questions": [
+        {
+          "id": "id-01",
+          "query": "chunk_source",
+          "style": "identifier",
+          "expected": [
+            "backend/app/ingestion/chunker.py"
+          ],
+          "retrieved": [
+            "backend/app/ingestion/chunker.py",
+            "backend/tests/integration/test_ingestion.py",
+            "backend/tests/unit/test_reranker.py",
+            "backend/app/rag/fusion.py",
+            "backend/tests/unit/test_chunker.py",
+            "backend/app/models/chunk.py"
+          ],
+          "methods": [
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector"
+          ],
+          "scores": {
+            "1": {
+              "recall": 1.0,
+              "precision": 1.0,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "3": {
+              "recall": 1.0,
+              "precision": 0.3333333333333333,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 1.0,
+              "precision": 0.2,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.1,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "id-02",
+          "query": "is_secret_path",
+          "style": "identifier",
+          "expected": [
+            "backend/app/ingestion/filters.py"
+          ],
+          "retrieved": [
+            "backend/app/ingestion/filters.py",
+            "backend/tests/unit/test_filters.py",
+            "backend/tests/unit/test_discovery.py",
+            "backend/tests/integration/test_ingestion.py"
+          ],
+          "methods": [
+            "vector",
+            "vector",
+            "vector",
+            "vector"
+          ],
+          "scores": {
+            "1": {
+              "recall": 1.0,
+              "precision": 1.0,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "3": {
+              "recall": 1.0,
+              "precision": 0.3333333333333333,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 1.0,
+              "precision": 0.2,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.1,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "id-03",
+          "query": "reciprocal_rank_fusion",
+          "style": "identifier",
+          "expected": [
+            "backend/app/rag/fusion.py"
+          ],
+          "retrieved": [
+            "backend/app/rag/fusion.py",
+            "backend/tests/unit/test_fusion.py",
+            "backend/app/rag/types.py",
+            "docs/adr/ADR-011-reciprocal-rank-fusion.md"
+          ],
+          "methods": [
+            "vector",
+            "vector",
+            "vector",
+            "vector"
+          ],
+          "scores": {
+            "1": {
+              "recall": 1.0,
+              "precision": 1.0,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "3": {
+              "recall": 1.0,
+              "precision": 0.3333333333333333,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 1.0,
+              "precision": 0.2,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.1,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "id-04",
+          "query": "create_session_token",
+          "style": "identifier",
+          "expected": [
+            "backend/app/core/security.py"
+          ],
+          "retrieved": [
+            "backend/app/core/security.py",
+            "backend/tests/unit/test_security.py",
+            "backend/app/core/deps.py"
+          ],
+          "methods": [
+            "vector",
+            "vector",
+            "vector"
+          ],
+          "scores": {
+            "1": {
+              "recall": 1.0,
+              "precision": 1.0,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "3": {
+              "recall": 1.0,
+              "precision": 0.3333333333333333,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 1.0,
+              "precision": 0.2,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.1,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "id-05",
+          "query": "github_callback",
+          "style": "identifier",
+          "expected": [
+            "backend/app/routes/auth.py"
+          ],
+          "retrieved": [
+            "backend/app/core/config.py",
+            "backend/app/routes/auth.py",
+            "backend/tests/unit/test_auth_routes.py",
+            "frontend/src/app/page.tsx",
+            "backend/tests/integration/test_auth_flow.py",
+            "backend/app/services/github.py",
+            "frontend/src/features/repositories/actions.ts"
+          ],
+          "methods": [
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "3": {
+              "recall": 1.0,
+              "precision": 0.3333333333333333,
+              "reciprocal_rank": 0.5,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 1.0,
+              "precision": 0.2,
+              "reciprocal_rank": 0.5,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.1,
+              "reciprocal_rank": 0.5,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "id-06",
+          "query": "OllamaEmbedder",
+          "style": "identifier",
+          "expected": [
+            "backend/app/llm/ollama.py"
+          ],
+          "retrieved": [
+            "backend/app/llm/ollama.py",
+            "backend/app/routes/health.py",
+            "backend/tests/unit/test_ollama_embedder.py",
+            "backend/tests/integration/test_ollama_live.py"
+          ],
+          "methods": [
+            "vector",
+            "vector",
+            "vector",
+            "vector"
+          ],
+          "scores": {
+            "1": {
+              "recall": 1.0,
+              "precision": 1.0,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "3": {
+              "recall": 1.0,
+              "precision": 0.3333333333333333,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 1.0,
+              "precision": 0.2,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.1,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "id-07",
+          "query": "session_scope",
+          "style": "identifier",
+          "expected": [
+            "backend/app/core/database.py"
+          ],
+          "retrieved": [
+            "backend/app/core/database.py",
+            "backend/tests/unit/test_security.py",
+            "backend/tests/integration/test_retrieval.py",
+            "backend/tests/unit/test_auth_routes.py",
+            "backend/app/core/security.py",
+            "backend/tests/integration/test_ingestion.py",
+            "backend/app/routes/health.py"
+          ],
+          "methods": [
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector"
+          ],
+          "scores": {
+            "1": {
+              "recall": 1.0,
+              "precision": 1.0,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "3": {
+              "recall": 1.0,
+              "precision": 0.3333333333333333,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 1.0,
+              "precision": 0.2,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.1,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "id-08",
+          "query": "EMBEDDING_DIMENSIONS setting",
+          "style": "identifier",
+          "expected": [
+            "backend/app/core/config.py"
+          ],
+          "retrieved": [
+            "backend/tests/integration/test_ollama_live.py",
+            "backend/app/llm/base.py",
+            "backend/app/llm/ollama.py",
+            "backend/app/ingestion/embedder.py",
+            "backend/tests/unit/test_ollama_embedder.py",
+            "backend/tests/integration/test_retrieval.py",
+            "backend/app/models/chunk.py"
+          ],
+          "methods": [
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "3": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "5": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "10": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            }
+          }
+        },
+        {
+          "id": "id-09",
+          "query": "enqueue_index_repository",
+          "style": "identifier",
+          "expected": [
+            "backend/app/queue/base.py",
+            "backend/app/queue/rq_backend.py"
+          ],
+          "retrieved": [
+            "backend/tests/integration/test_ingestion.py",
+            "backend/tests/integration/test_indexing_api.py",
+            "frontend/src/features/repositories/indexActions.ts",
+            "backend/app/queue/base.py",
+            "backend/app/ingestion/service.py",
+            "backend/app/models/job.py",
+            "backend/app/models/repository.py"
+          ],
+          "methods": [
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "3": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "5": {
+              "recall": 0.5,
+              "precision": 0.2,
+              "reciprocal_rank": 0.25,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 0.5,
+              "precision": 0.1,
+              "reciprocal_rank": 0.25,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "con-01",
+          "query": "how do I stop credentials from being fed to the language model",
+          "style": "conceptual",
+          "expected": [
+            "backend/app/ingestion/filters.py"
+          ],
+          "retrieved": [
+            ".gitignore",
+            "backend/app/schemas/auth.py",
+            "backend/app/core/security.py",
+            "backend/app/services/github.py",
+            "docs/lld.md",
+            ".env.example",
+            "backend/tests/unit/test_security.py",
+            "backend/app/ingestion/languages.py",
+            "frontend/src/features/repositories/actions.ts"
+          ],
+          "methods": [
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "3": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "5": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "10": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            }
+          }
+        },
+        {
+          "id": "con-02",
+          "query": "what stops one customer seeing another customer's data",
+          "style": "conceptual",
+          "expected": [
+            "backend/app/rag/keyword.py",
+            "backend/app/rag/vector.py",
+            "backend/app/routes/repositories.py"
+          ],
+          "retrieved": [
+            "backend/tests/unit/test_auth_routes.py",
+            "backend/app/services/github.py",
+            "backend/tests/integration/test_auth_flow.py",
+            "backend/app/core/deps.py",
+            "frontend/src/features/repositories/indexActions.ts",
+            "backend/app/schemas/auth.py",
+            "backend/app/ingestion/filters.py",
+            "backend/app/routes/health.py",
+            "backend/app/models/user.py"
+          ],
+          "methods": [
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "3": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "5": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "10": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            }
+          }
+        },
+        {
+          "id": "con-03",
+          "query": "how does the system avoid repeating expensive work when nothing changed",
+          "style": "conceptual",
+          "expected": [
+            "backend/app/ingestion/embedder.py",
+            "backend/app/ingestion/service.py"
+          ],
+          "retrieved": [
+            "frontend/src/features/repositories/indexActions.ts",
+            "backend/tests/integration/test_embedding.py",
+            "backend/tests/integration/test_auth_flow.py",
+            "backend/app/routes/health.py",
+            "backend/app/ingestion/service.py",
+            "backend/app/workers/run_worker.py",
+            "backend/tests/integration/test_ingestion.py",
+            "docs/adr/ADR-010-tarball-snapshots-instead-of-git-clone.md"
+          ],
+          "methods": [
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "3": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "5": {
+              "recall": 0.5,
+              "precision": 0.2,
+              "reciprocal_rank": 0.2,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 0.5,
+              "precision": 0.1,
+              "reciprocal_rank": 0.2,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "con-04",
+          "query": "what happens if the machine learning service is switched off",
+          "style": "conceptual",
+          "expected": [
+            "backend/app/llm/ollama.py",
+            "backend/app/rag/retriever.py"
+          ],
+          "retrieved": [
+            "backend/migrations/env.py",
+            "backend/tests/integration/test_indexing_api.py",
+            "backend/tests/integration/test_auth_flow.py",
+            "backend/tests/unit/test_health.py",
+            "backend/tests/unit/test_ollama_embedder.py",
+            "frontend/src/features/repositories/indexActions.ts",
+            "backend/app/routes/auth.py",
+            "backend/tests/unit/test_auth_routes.py"
+          ],
+          "methods": [
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "3": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "5": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "10": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            }
+          }
+        },
+        {
+          "id": "con-05",
+          "query": "how is long running work kept off the web request path",
+          "style": "conceptual",
+          "expected": [
+            "backend/app/queue/rq_backend.py",
+            "backend/app/routes/repositories.py",
+            "backend/app/workers/ingestion.py"
+          ],
+          "retrieved": [
+            "backend/app/workers/run_worker.py",
+            "docs/lld.md",
+            "backend/app/routes/jobs.py",
+            "frontend/src/lib/api.ts",
+            "frontend/src/features/repositories/indexActions.ts",
+            "backend/app/services/github.py",
+            "backend/app/rag/keyword.py",
+            "backend/app/ingestion/fetcher.py",
+            "backend/app/routes/auth.py"
+          ],
+          "methods": [
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "3": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "5": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "10": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            }
+          }
+        },
+        {
+          "id": "con-06",
+          "query": "how does the application avoid leaking internal details in failures",
+          "style": "conceptual",
+          "expected": [
+            "backend/app/core/errors.py"
+          ],
+          "retrieved": [
+            "backend/app/core/security.py",
+            "backend/app/core/errors.py",
+            "backend/app/services/github.py",
+            "docs/lld.md",
+            "backend/tests/unit/test_github_service.py",
+            "backend/app/workers/ingestion.py",
+            "backend/tests/unit/test_health.py",
+            "backend/tests/integration/test_embedding.py"
+          ],
+          "methods": [
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "3": {
+              "recall": 1.0,
+              "precision": 0.3333333333333333,
+              "reciprocal_rank": 0.5,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 1.0,
+              "precision": 0.2,
+              "reciprocal_rank": 0.5,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.1,
+              "reciprocal_rank": 0.5,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "con-07",
+          "query": "how can a request be traced through the logs",
+          "style": "conceptual",
+          "expected": [
+            "backend/app/core/logging.py",
+            "backend/app/core/middleware.py"
+          ],
+          "retrieved": [
+            "backend/app/core/middleware.py",
+            "backend/app/core/logging.py",
+            "docs/lld.md",
+            "backend/tests/unit/test_health.py",
+            "backend/tests/integration/test_retrieval.py",
+            "backend/tests/unit/test_security.py"
+          ],
+          "methods": [
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.5,
+              "precision": 1.0,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "3": {
+              "recall": 1.0,
+              "precision": 0.6666666666666666,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 1.0,
+              "precision": 0.4,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.2,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "con-08",
+          "query": "why would two pieces of retrieved text be combined into one ranking",
+          "style": "conceptual",
+          "expected": [
+            "backend/app/rag/fusion.py",
+            "backend/app/rag/retriever.py"
+          ],
+          "retrieved": [
+            "backend/app/rag/fusion.py",
+            "backend/tests/unit/test_fusion.py",
+            "docs/rag.md",
+            "docs/adr/ADR-011-reciprocal-rank-fusion.md",
+            "backend/app/rag/types.py",
+            "backend/app/schemas/search.py"
+          ],
+          "methods": [
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.5,
+              "precision": 1.0,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "3": {
+              "recall": 0.5,
+              "precision": 0.3333333333333333,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 0.5,
+              "precision": 0.2,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 0.5,
+              "precision": 0.1,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "con-09",
+          "query": "how are very large source files prevented from overwhelming the system",
+          "style": "conceptual",
+          "expected": [
+            "backend/app/ingestion/chunker.py",
+            "backend/app/ingestion/filters.py"
+          ],
+          "retrieved": [
+            "backend/tests/unit/test_filters.py",
+            "backend/app/ingestion/filters.py",
+            "backend/tests/unit/test_chunker.py",
+            "backend/app/ingestion/fetcher.py",
+            "backend/app/models/file.py",
+            "docs/rag.md"
+          ],
+          "methods": [
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "3": {
+              "recall": 0.5,
+              "precision": 0.3333333333333333,
+              "reciprocal_rank": 0.5,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 0.5,
+              "precision": 0.2,
+              "reciprocal_rank": 0.5,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 0.5,
+              "precision": 0.1,
+              "reciprocal_rank": 0.5,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "con-10",
+          "query": "what protects against a malicious archive escaping its directory",
+          "style": "conceptual",
+          "expected": [
+            "backend/app/ingestion/fetcher.py"
+          ],
+          "retrieved": [
+            "backend/app/ingestion/fetcher.py",
+            "backend/tests/unit/test_filters.py",
+            "docs/security.md",
+            "backend/tests/integration/test_ingestion.py",
+            "backend/app/ingestion/discovery.py",
+            "backend/app/core/security.py",
+            "docs/adr/ADR-006-sandbox-security-boundary.md"
+          ],
+          "methods": [
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector"
+          ],
+          "scores": {
+            "1": {
+              "recall": 1.0,
+              "precision": 1.0,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "3": {
+              "recall": 1.0,
+              "precision": 0.3333333333333333,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 1.0,
+              "precision": 0.2,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.1,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "mix-01",
+          "query": "where is the OAuth callback handled",
+          "style": "mixed",
+          "expected": [
+            "backend/app/routes/auth.py"
+          ],
+          "retrieved": [
+            "frontend/src/features/auth/SignInButton.tsx",
+            "frontend/src/app/page.tsx",
+            "backend/tests/integration/test_auth_flow.py",
+            "backend/tests/unit/test_auth_routes.py",
+            "backend/app/routes/auth.py",
+            "README.md",
+            "backend/app/services/users.py",
+            "backend/app/core/config.py"
+          ],
+          "methods": [
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "3": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "5": {
+              "recall": 1.0,
+              "precision": 0.2,
+              "reciprocal_rank": 0.2,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.1,
+              "reciprocal_rank": 0.2,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "mix-02",
+          "query": "how are GitHub access tokens encrypted before being stored",
+          "style": "mixed",
+          "expected": [
+            "backend/app/core/security.py"
+          ],
+          "retrieved": [
+            "backend/app/core/security.py",
+            "backend/tests/integration/test_auth_flow.py",
+            "backend/app/core/deps.py",
+            "docs/security.md",
+            "docs/README.md",
+            "backend/tests/unit/test_security.py",
+            "backend/app/routes/auth.py",
+            "backend/tests/unit/test_github_service.py"
+          ],
+          "methods": [
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector"
+          ],
+          "scores": {
+            "1": {
+              "recall": 1.0,
+              "precision": 1.0,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "3": {
+              "recall": 1.0,
+              "precision": 0.3333333333333333,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 1.0,
+              "precision": 0.2,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.1,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "mix-03",
+          "query": "how are source files split into chunks",
+          "style": "mixed",
+          "expected": [
+            "backend/app/ingestion/chunker.py"
+          ],
+          "retrieved": [
+            "backend/app/ingestion/chunker.py",
+            "backend/app/models/chunk.py",
+            "backend/tests/unit/test_chunker.py",
+            "backend/tests/integration/test_ingestion.py",
+            "docs/rag.md"
+          ],
+          "methods": [
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector"
+          ],
+          "scores": {
+            "1": {
+              "recall": 1.0,
+              "precision": 1.0,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "3": {
+              "recall": 1.0,
+              "precision": 0.3333333333333333,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 1.0,
+              "precision": 0.2,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.1,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "mix-04",
+          "query": "how do I run the background worker",
+          "style": "mixed",
+          "expected": [
+            "backend/app/workers/run_worker.py"
+          ],
+          "retrieved": [
+            "backend/app/workers/run_worker.py",
+            "backend/app/workers/ingestion.py",
+            "frontend/src/app/globals.css",
+            "backend/migrations/env.py",
+            "backend/app/schemas/job.py",
+            "frontend/src/features/repositories/actions.ts",
+            "backend/app/models/job.py"
+          ],
+          "methods": [
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector"
+          ],
+          "scores": {
+            "1": {
+              "recall": 1.0,
+              "precision": 1.0,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "3": {
+              "recall": 1.0,
+              "precision": 0.3333333333333333,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 1.0,
+              "precision": 0.2,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.1,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "mix-05",
+          "query": "which file extensions map to a parser",
+          "style": "mixed",
+          "expected": [
+            "backend/app/ingestion/languages.py"
+          ],
+          "retrieved": [
+            "backend/app/ingestion/languages.py",
+            "backend/app/ingestion/chunker.py",
+            "backend/app/ingestion/fetcher.py",
+            "backend/app/ingestion/discovery.py",
+            "backend/app/ingestion/filters.py"
+          ],
+          "methods": [
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector"
+          ],
+          "scores": {
+            "1": {
+              "recall": 1.0,
+              "precision": 1.0,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "3": {
+              "recall": 1.0,
+              "precision": 0.3333333333333333,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 1.0,
+              "precision": 0.2,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.1,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "mix-06",
+          "query": "how is the health of the database and cache reported",
+          "style": "mixed",
+          "expected": [
+            "backend/app/routes/health.py"
+          ],
+          "retrieved": [
+            "backend/tests/unit/test_health.py",
+            "backend/tests/integration/test_infrastructure.py",
+            "backend/app/routes/health.py",
+            "backend/app/schemas/health.py",
+            "frontend/src/features/health/types.ts",
+            "backend/app/ingestion/service.py",
+            "backend/app/schemas/repository.py",
+            "docs/deployment.md",
+            "frontend/src/features/repositories/indexActions.ts"
+          ],
+          "methods": [
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "3": {
+              "recall": 1.0,
+              "precision": 0.3333333333333333,
+              "reciprocal_rank": 0.3333333333333333,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 1.0,
+              "precision": 0.2,
+              "reciprocal_rank": 0.3333333333333333,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.1,
+              "reciprocal_rank": 0.3333333333333333,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "mix-07",
+          "query": "how does the API know which user is making a request",
+          "style": "mixed",
+          "expected": [
+            "backend/app/core/deps.py"
+          ],
+          "retrieved": [
+            "backend/app/core/deps.py",
+            "frontend/src/lib/session.ts",
+            "backend/app/services/github.py",
+            "backend/app/schemas/auth.py",
+            "backend/tests/integration/test_indexing_api.py",
+            "backend/tests/unit/test_auth_routes.py",
+            "backend/app/routes/auth.py",
+            "frontend/src/features/repositories/actions.ts"
+          ],
+          "methods": [
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector",
+            "vector"
+          ],
+          "scores": {
+            "1": {
+              "recall": 1.0,
+              "precision": 1.0,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "3": {
+              "recall": 1.0,
+              "precision": 0.3333333333333333,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 1.0,
+              "precision": 0.2,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.1,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            }
+          }
+        }
+      ],
+      "elapsed_seconds": 62.34392450000087
+    },
+    "keyword_only": {
+      "name": "keyword_only",
+      "recall": {
+        "1": 0.09615384615384616,
+        "3": 0.38461538461538464,
+        "5": 0.5192307692307693,
+        "10": 0.5961538461538461
+      },
+      "precision": {
+        "1": 0.11538461538461539,
+        "3": 0.15384615384615385,
+        "5": 0.1307692307692308,
+        "10": 0.0730769230769231
+      },
+      "mrr": 0.2792124542124542,
+      "hit_rate": {
+        "1": 0.11538461538461539,
+        "3": 0.46153846153846156,
+        "5": 0.5384615384615384,
+        "10": 0.6153846153846154
+      },
+      "by_style": {
+        "identifier": {
+          "count": 9.0,
+          "recall@5": 0.6666666666666666,
+          "hit@5": 0.6666666666666666,
+          "mrr": 0.3425925925925926
+        },
+        "conceptual": {
+          "count": 10.0,
+          "recall@5": 0.45,
+          "hit@5": 0.5,
+          "mrr": 0.25
+        },
+        "mixed": {
+          "count": 7.0,
+          "recall@5": 0.42857142857142855,
+          "hit@5": 0.42857142857142855,
+          "mrr": 0.23945578231292516
+        }
+      },
+      "questions": [
+        {
+          "id": "id-01",
+          "query": "chunk_source",
+          "style": "identifier",
+          "expected": [
+            "backend/app/ingestion/chunker.py"
+          ],
+          "retrieved": [
+            "backend/app/ingestion/chunker.py",
+            "backend/tests/unit/test_chunker.py",
+            "docs/README.md",
+            "backend/tests/integration/test_retrieval.py",
+            "backend/app/ingestion/service.py"
+          ],
+          "methods": [
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword"
+          ],
+          "scores": {
+            "1": {
+              "recall": 1.0,
+              "precision": 1.0,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "3": {
+              "recall": 1.0,
+              "precision": 0.3333333333333333,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 1.0,
+              "precision": 0.2,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.1,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "id-02",
+          "query": "is_secret_path",
+          "style": "identifier",
+          "expected": [
+            "backend/app/ingestion/filters.py"
+          ],
+          "retrieved": [
+            "backend/tests/integration/test_retrieval.py",
+            "backend/app/ingestion/filters.py",
+            "backend/tests/unit/test_filters.py",
+            "backend/app/ingestion/discovery.py",
+            "docs/README.md",
+            "docs/lld.md"
+          ],
+          "methods": [
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "3": {
+              "recall": 1.0,
+              "precision": 0.3333333333333333,
+              "reciprocal_rank": 0.5,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 1.0,
+              "precision": 0.2,
+              "reciprocal_rank": 0.5,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.1,
+              "reciprocal_rank": 0.5,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "id-03",
+          "query": "reciprocal_rank_fusion",
+          "style": "identifier",
+          "expected": [
+            "backend/app/rag/fusion.py"
+          ],
+          "retrieved": [
+            "backend/tests/unit/test_fusion.py",
+            "docs/adr/ADR-011-reciprocal-rank-fusion.md",
+            "docs/rag.md",
+            "backend/app/rag/fusion.py"
+          ],
+          "methods": [
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "3": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "5": {
+              "recall": 1.0,
+              "precision": 0.2,
+              "reciprocal_rank": 0.25,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.1,
+              "reciprocal_rank": 0.25,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "id-04",
+          "query": "create_session_token",
+          "style": "identifier",
+          "expected": [
+            "backend/app/core/security.py"
+          ],
+          "retrieved": [
+            "backend/tests/unit/test_security.py",
+            "backend/app/routes/auth.py",
+            "backend/app/core/security.py"
+          ],
+          "methods": [
+            "keyword",
+            "keyword",
+            "keyword"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "3": {
+              "recall": 1.0,
+              "precision": 0.3333333333333333,
+              "reciprocal_rank": 0.3333333333333333,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 1.0,
+              "precision": 0.2,
+              "reciprocal_rank": 0.3333333333333333,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.1,
+              "reciprocal_rank": 0.3333333333333333,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "id-05",
+          "query": "github_callback",
+          "style": "identifier",
+          "expected": [
+            "backend/app/routes/auth.py"
+          ],
+          "retrieved": [
+            "docs/rag.md",
+            "backend/tests/integration/test_retrieval.py",
+            "backend/app/rag/keyword.py",
+            "docs/README.md",
+            ".env.example",
+            "backend/app/routes/auth.py"
+          ],
+          "methods": [
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "3": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "5": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.1,
+              "reciprocal_rank": 0.16666666666666666,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "id-06",
+          "query": "OllamaEmbedder",
+          "style": "identifier",
+          "expected": [
+            "backend/app/llm/ollama.py"
+          ],
+          "retrieved": [
+            "backend/app/workers/ingestion.py",
+            "backend/tests/integration/test_ollama_live.py",
+            "backend/tests/unit/test_ollama_embedder.py",
+            "backend/app/routes/health.py",
+            "backend/app/routes/search.py"
+          ],
+          "methods": [
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "3": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "5": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "10": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            }
+          }
+        },
+        {
+          "id": "id-07",
+          "query": "session_scope",
+          "style": "identifier",
+          "expected": [
+            "backend/app/core/database.py"
+          ],
+          "retrieved": [
+            "backend/app/workers/ingestion.py",
+            "backend/tests/integration/test_ingestion.py",
+            "backend/app/core/database.py",
+            "backend/tests/integration/test_embedding.py",
+            "backend/tests/integration/test_retrieval.py"
+          ],
+          "methods": [
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "3": {
+              "recall": 1.0,
+              "precision": 0.3333333333333333,
+              "reciprocal_rank": 0.3333333333333333,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 1.0,
+              "precision": 0.2,
+              "reciprocal_rank": 0.3333333333333333,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.1,
+              "reciprocal_rank": 0.3333333333333333,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "id-08",
+          "query": "EMBEDDING_DIMENSIONS setting",
+          "style": "identifier",
+          "expected": [
+            "backend/app/core/config.py"
+          ],
+          "retrieved": [
+            "backend/app/models/chunk.py",
+            "backend/tests/integration/test_ollama_live.py",
+            "backend/app/llm/ollama.py",
+            "backend/tests/unit/test_ollama_embedder.py",
+            "backend/app/workers/ingestion.py",
+            "docs/README.md",
+            "docs/rag.md",
+            "backend/migrations/versions/b4bd11b55125_add_chunk_embeddings_and_hnsw_index.py"
+          ],
+          "methods": [
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "3": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "5": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "10": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            }
+          }
+        },
+        {
+          "id": "id-09",
+          "query": "enqueue_index_repository",
+          "style": "identifier",
+          "expected": [
+            "backend/app/queue/base.py",
+            "backend/app/queue/rq_backend.py"
+          ],
+          "retrieved": [
+            "backend/app/routes/repositories.py",
+            "backend/app/queue/base.py",
+            "backend/tests/integration/test_indexing_api.py",
+            "backend/app/queue/rq_backend.py"
+          ],
+          "methods": [
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "3": {
+              "recall": 0.5,
+              "precision": 0.3333333333333333,
+              "reciprocal_rank": 0.5,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 1.0,
+              "precision": 0.4,
+              "reciprocal_rank": 0.5,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.2,
+              "reciprocal_rank": 0.5,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "con-01",
+          "query": "how do I stop credentials from being fed to the language model",
+          "style": "conceptual",
+          "expected": [
+            "backend/app/ingestion/filters.py"
+          ],
+          "retrieved": [
+            "docs/lld.md",
+            "README.md",
+            "docs/rag.md",
+            "backend/app/core/config.py",
+            ".env.example",
+            "backend/tests/unit/test_health.py",
+            "docs/security.md"
+          ],
+          "methods": [
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "3": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "5": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "10": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            }
+          }
+        },
+        {
+          "id": "con-02",
+          "query": "what stops one customer seeing another customer's data",
+          "style": "conceptual",
+          "expected": [
+            "backend/app/rag/keyword.py",
+            "backend/app/rag/vector.py",
+            "backend/app/routes/repositories.py"
+          ],
+          "retrieved": [
+            "docs/security.md",
+            "docs/lld.md",
+            "docs/adr/ADR-009-backend-owned-github-oauth.md",
+            "docs/adr/ADR-001-postgres-pgvector.md",
+            "docs/rag.md",
+            "backend/tests/integration/test_auth_flow.py",
+            "docs/README.md"
+          ],
+          "methods": [
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "3": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "5": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "10": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            }
+          }
+        },
+        {
+          "id": "con-03",
+          "query": "how does the system avoid repeating expensive work when nothing changed",
+          "style": "conceptual",
+          "expected": [
+            "backend/app/ingestion/embedder.py",
+            "backend/app/ingestion/service.py"
+          ],
+          "retrieved": [
+            "docs/adr/ADR-010-tarball-snapshots-instead-of-git-clone.md",
+            "docs/README.md",
+            "backend/tests/integration/test_embedding.py",
+            "docs/security.md",
+            "backend/app/rag/retriever.py",
+            "docs/adr/ADR-003-redis-rq-stage1-queue.md",
+            "docs/lld.md",
+            "backend/app/ingestion/fetcher.py",
+            "docs/rag.md"
+          ],
+          "methods": [
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "3": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "5": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "10": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            }
+          }
+        },
+        {
+          "id": "con-04",
+          "query": "what happens if the machine learning service is switched off",
+          "style": "conceptual",
+          "expected": [
+            "backend/app/llm/ollama.py",
+            "backend/app/rag/retriever.py"
+          ],
+          "retrieved": [
+            "docs/api.md",
+            "docs/deployment.md",
+            "docs/lld.md",
+            "docs/security.md",
+            "frontend/src/features/repositories/actions.ts",
+            "docs/hld.md",
+            "backend/tests/unit/test_chunker.py"
+          ],
+          "methods": [
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "3": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "5": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "10": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            }
+          }
+        },
+        {
+          "id": "con-05",
+          "query": "how is long running work kept off the web request path",
+          "style": "conceptual",
+          "expected": [
+            "backend/app/queue/rq_backend.py",
+            "backend/app/routes/repositories.py",
+            "backend/app/workers/ingestion.py"
+          ],
+          "retrieved": [
+            "docs/api.md",
+            "docs/adr/ADR-003-redis-rq-stage1-queue.md",
+            "docs/lld.md",
+            "docs/rag.md",
+            "docs/adr/ADR-009-backend-owned-github-oauth.md",
+            "docs/adr/ADR-008-synchronous-sqlalchemy.md",
+            "docs/security.md",
+            "backend/app/routes/jobs.py"
+          ],
+          "methods": [
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "3": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "5": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "10": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            }
+          }
+        },
+        {
+          "id": "con-06",
+          "query": "how does the application avoid leaking internal details in failures",
+          "style": "conceptual",
+          "expected": [
+            "backend/app/core/errors.py"
+          ],
+          "retrieved": [
+            "docs/security.md",
+            "docs/lld.md",
+            "backend/app/core/errors.py",
+            "docs/api.md",
+            "docs/hld.md",
+            "backend/tests/unit/test_errors.py",
+            "backend/app/services/github.py"
+          ],
+          "methods": [
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "3": {
+              "recall": 1.0,
+              "precision": 0.3333333333333333,
+              "reciprocal_rank": 0.3333333333333333,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 1.0,
+              "precision": 0.2,
+              "reciprocal_rank": 0.3333333333333333,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.1,
+              "reciprocal_rank": 0.3333333333333333,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "con-07",
+          "query": "how can a request be traced through the logs",
+          "style": "conceptual",
+          "expected": [
+            "backend/app/core/logging.py",
+            "backend/app/core/middleware.py"
+          ],
+          "retrieved": [
+            "backend/app/core/middleware.py",
+            "docs/lld.md",
+            "docs/hld.md",
+            "docs/api.md",
+            "backend/app/core/logging.py",
+            "docs/adr/ADR-003-redis-rq-stage1-queue.md",
+            "backend/app/core/config.py",
+            "backend/app/core/errors.py"
+          ],
+          "methods": [
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.5,
+              "precision": 1.0,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "3": {
+              "recall": 0.5,
+              "precision": 0.3333333333333333,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 1.0,
+              "precision": 0.4,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.2,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "con-08",
+          "query": "why would two pieces of retrieved text be combined into one ranking",
+          "style": "conceptual",
+          "expected": [
+            "backend/app/rag/fusion.py",
+            "backend/app/rag/retriever.py"
+          ],
+          "retrieved": [
+            "docs/adr/ADR-011-reciprocal-rank-fusion.md",
+            "docs/rag.md",
+            "backend/app/rag/fusion.py",
+            "docs/lld.md",
+            "docs/api.md",
+            "README.md",
+            "backend/app/rag/keyword.py"
+          ],
+          "methods": [
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "3": {
+              "recall": 0.5,
+              "precision": 0.3333333333333333,
+              "reciprocal_rank": 0.3333333333333333,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 0.5,
+              "precision": 0.2,
+              "reciprocal_rank": 0.3333333333333333,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 0.5,
+              "precision": 0.1,
+              "reciprocal_rank": 0.3333333333333333,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "con-09",
+          "query": "how are very large source files prevented from overwhelming the system",
+          "style": "conceptual",
+          "expected": [
+            "backend/app/ingestion/chunker.py",
+            "backend/app/ingestion/filters.py"
+          ],
+          "retrieved": [
+            "docs/adr/ADR-002-ast-aware-chunking.md",
+            "docs/rag.md",
+            "backend/app/ingestion/filters.py",
+            "backend/app/ingestion/chunker.py",
+            "docs/README.md",
+            "backend/tests/integration/test_indexing_api.py",
+            "backend/app/ingestion/service.py",
+            "backend/app/models/file.py",
+            "docs/adr/ADR-001-postgres-pgvector.md"
+          ],
+          "methods": [
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "3": {
+              "recall": 0.5,
+              "precision": 0.3333333333333333,
+              "reciprocal_rank": 0.3333333333333333,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 1.0,
+              "precision": 0.4,
+              "reciprocal_rank": 0.3333333333333333,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.2,
+              "reciprocal_rank": 0.3333333333333333,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "con-10",
+          "query": "what protects against a malicious archive escaping its directory",
+          "style": "conceptual",
+          "expected": [
+            "backend/app/ingestion/fetcher.py"
+          ],
+          "retrieved": [
+            "docs/rag.md",
+            "backend/app/ingestion/fetcher.py",
+            "docs/adr/ADR-010-tarball-snapshots-instead-of-git-clone.md",
+            "README.md",
+            "backend/tests/unit/test_filters.py",
+            "backend/app/ingestion/discovery.py",
+            "backend/tests/unit/test_discovery.py"
+          ],
+          "methods": [
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "3": {
+              "recall": 1.0,
+              "precision": 0.3333333333333333,
+              "reciprocal_rank": 0.5,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 1.0,
+              "precision": 0.2,
+              "reciprocal_rank": 0.5,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.1,
+              "reciprocal_rank": 0.5,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "mix-01",
+          "query": "where is the OAuth callback handled",
+          "style": "mixed",
+          "expected": [
+            "backend/app/routes/auth.py"
+          ],
+          "retrieved": [
+            "backend/app/rag/keyword.py",
+            "backend/tests/integration/test_retrieval.py",
+            "docs/README.md",
+            "docs/adr/ADR-011-reciprocal-rank-fusion.md",
+            "frontend/src/features/search/SearchPanel.tsx",
+            "docs/rag.md",
+            "backend/app/routes/auth.py",
+            "docs/lld.md"
+          ],
+          "methods": [
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "3": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "5": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.1,
+              "reciprocal_rank": 0.14285714285714285,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "mix-02",
+          "query": "how are GitHub access tokens encrypted before being stored",
+          "style": "mixed",
+          "expected": [
+            "backend/app/core/security.py"
+          ],
+          "retrieved": [
+            "README.md",
+            "backend/tests/integration/test_auth_flow.py",
+            "docs/adr/ADR-009-backend-owned-github-oauth.md",
+            "backend/app/core/deps.py",
+            "backend/app/core/security.py",
+            ".env.example",
+            "backend/app/models/user.py",
+            "docs/README.md",
+            "backend/migrations/versions/b16807414425_store_encrypted_github_access_token_on_.py"
+          ],
+          "methods": [
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "3": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "5": {
+              "recall": 1.0,
+              "precision": 0.2,
+              "reciprocal_rank": 0.2,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.1,
+              "reciprocal_rank": 0.2,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "mix-03",
+          "query": "how are source files split into chunks",
+          "style": "mixed",
+          "expected": [
+            "backend/app/ingestion/chunker.py"
+          ],
+          "retrieved": [
+            "docs/README.md",
+            "docs/adr/ADR-002-ast-aware-chunking.md",
+            "backend/app/ingestion/chunker.py",
+            "docs/rag.md",
+            "backend/app/models/chunk.py",
+            "backend/tests/integration/test_indexing_api.py",
+            "backend/app/ingestion/service.py",
+            "backend/tests/unit/test_chunker.py"
+          ],
+          "methods": [
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "3": {
+              "recall": 1.0,
+              "precision": 0.3333333333333333,
+              "reciprocal_rank": 0.3333333333333333,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 1.0,
+              "precision": 0.2,
+              "reciprocal_rank": 0.3333333333333333,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.1,
+              "reciprocal_rank": 0.3333333333333333,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "mix-04",
+          "query": "how do I run the background worker",
+          "style": "mixed",
+          "expected": [
+            "backend/app/workers/run_worker.py"
+          ],
+          "retrieved": [
+            "docs/adr/ADR-003-redis-rq-stage1-queue.md",
+            "docs/api.md",
+            "docs/rag.md",
+            "backend/app/queue/base.py",
+            "docs/adr/ADR-009-backend-owned-github-oauth.md",
+            "docs/adr/ADR-008-synchronous-sqlalchemy.md",
+            "docs/adr/ADR-005-kubernetes-worker-scaling.md",
+            "docs/adr/ADR-006-sandbox-security-boundary.md",
+            "docs/lld.md",
+            "README.md"
+          ],
+          "methods": [
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "3": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "5": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "10": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            }
+          }
+        },
+        {
+          "id": "mix-05",
+          "query": "which file extensions map to a parser",
+          "style": "mixed",
+          "expected": [
+            "backend/app/ingestion/languages.py"
+          ],
+          "retrieved": [
+            "backend/app/ingestion/languages.py",
+            "backend/app/ingestion/filters.py",
+            "docs/lld.md",
+            "backend/app/models/file.py",
+            "backend/app/models/chunk.py",
+            "backend/app/ingestion/chunker.py",
+            "backend/app/models/repository.py",
+            "backend/app/models/job.py"
+          ],
+          "methods": [
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword"
+          ],
+          "scores": {
+            "1": {
+              "recall": 1.0,
+              "precision": 1.0,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "3": {
+              "recall": 1.0,
+              "precision": 0.3333333333333333,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 1.0,
+              "precision": 0.2,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.1,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "mix-06",
+          "query": "how is the health of the database and cache reported",
+          "style": "mixed",
+          "expected": [
+            "backend/app/routes/health.py"
+          ],
+          "retrieved": [
+            "backend/tests/unit/test_health.py",
+            "README.md",
+            "backend/tests/integration/test_infrastructure.py",
+            "docs/api.md",
+            "backend/app/ingestion/filters.py",
+            "backend/tests/integration/test_indexing_api.py"
+          ],
+          "methods": [
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "3": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "5": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "10": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            }
+          }
+        },
+        {
+          "id": "mix-07",
+          "query": "how does the API know which user is making a request",
+          "style": "mixed",
+          "expected": [
+            "backend/app/core/deps.py"
+          ],
+          "retrieved": [
+            "backend/app/core/config.py",
+            "docs/lld.md",
+            "backend/app/services/github.py",
+            "docs/README.md",
+            ".env.example",
+            "README.md",
+            "docs/adr/ADR-003-redis-rq-stage1-queue.md",
+            "docs/api.md"
+          ],
+          "methods": [
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword",
+            "keyword"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "3": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "5": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "10": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            }
+          }
+        }
+      ],
+      "elapsed_seconds": 0.18345890000091458
+    },
+    "hybrid": {
+      "name": "hybrid",
+      "recall": {
+        "1": 0.4423076923076923,
+        "3": 0.7307692307692307,
+        "5": 0.7435897435897435,
+        "10": 0.7692307692307693
+      },
+      "precision": {
+        "1": 0.5,
+        "3": 0.29487179487179477,
+        "5": 0.18461538461538468,
+        "10": 0.10000000000000002
+      },
+      "mrr": 0.625,
+      "hit_rate": {
+        "1": 0.5,
+        "3": 0.7692307692307693,
+        "5": 0.8076923076923077,
+        "10": 0.8461538461538461
+      },
+      "by_style": {
+        "identifier": {
+          "count": 9.0,
+          "recall@5": 0.7777777777777778,
+          "hit@5": 0.7777777777777778,
+          "mrr": 0.6111111111111112
+        },
+        "conceptual": {
+          "count": 10.0,
+          "recall@5": 0.5333333333333333,
+          "hit@5": 0.7,
+          "mrr": 0.575
+        },
+        "mixed": {
+          "count": 7.0,
+          "recall@5": 1.0,
+          "hit@5": 1.0,
+          "mrr": 0.7142857142857142
+        }
+      },
+      "questions": [
+        {
+          "id": "id-01",
+          "query": "chunk_source",
+          "style": "identifier",
+          "expected": [
+            "backend/app/ingestion/chunker.py"
+          ],
+          "retrieved": [
+            "backend/app/ingestion/chunker.py",
+            "backend/tests/unit/test_chunker.py"
+          ],
+          "methods": [
+            "both",
+            "both"
+          ],
+          "scores": {
+            "1": {
+              "recall": 1.0,
+              "precision": 1.0,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "3": {
+              "recall": 1.0,
+              "precision": 0.3333333333333333,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 1.0,
+              "precision": 0.2,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.1,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "id-02",
+          "query": "is_secret_path",
+          "style": "identifier",
+          "expected": [
+            "backend/app/ingestion/filters.py"
+          ],
+          "retrieved": [
+            "backend/app/ingestion/filters.py",
+            "backend/tests/unit/test_filters.py",
+            "backend/app/ingestion/discovery.py",
+            "backend/tests/integration/test_retrieval.py",
+            "backend/tests/unit/test_discovery.py"
+          ],
+          "methods": [
+            "both",
+            "both",
+            "both",
+            "keyword",
+            "vector"
+          ],
+          "scores": {
+            "1": {
+              "recall": 1.0,
+              "precision": 1.0,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "3": {
+              "recall": 1.0,
+              "precision": 0.3333333333333333,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 1.0,
+              "precision": 0.2,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.1,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "id-03",
+          "query": "reciprocal_rank_fusion",
+          "style": "identifier",
+          "expected": [
+            "backend/app/rag/fusion.py"
+          ],
+          "retrieved": [
+            "backend/tests/unit/test_fusion.py",
+            "backend/app/rag/fusion.py",
+            "docs/adr/ADR-011-reciprocal-rank-fusion.md"
+          ],
+          "methods": [
+            "both",
+            "both",
+            "both"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "3": {
+              "recall": 1.0,
+              "precision": 0.3333333333333333,
+              "reciprocal_rank": 0.5,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 1.0,
+              "precision": 0.2,
+              "reciprocal_rank": 0.5,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.1,
+              "reciprocal_rank": 0.5,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "id-04",
+          "query": "create_session_token",
+          "style": "identifier",
+          "expected": [
+            "backend/app/core/security.py"
+          ],
+          "retrieved": [
+            "backend/tests/unit/test_security.py",
+            "backend/app/core/security.py",
+            "backend/app/routes/auth.py"
+          ],
+          "methods": [
+            "both",
+            "both",
+            "both"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "3": {
+              "recall": 1.0,
+              "precision": 0.3333333333333333,
+              "reciprocal_rank": 0.5,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 1.0,
+              "precision": 0.2,
+              "reciprocal_rank": 0.5,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.1,
+              "reciprocal_rank": 0.5,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "id-05",
+          "query": "github_callback",
+          "style": "identifier",
+          "expected": [
+            "backend/app/routes/auth.py"
+          ],
+          "retrieved": [
+            "backend/app/routes/auth.py",
+            "backend/app/core/config.py",
+            "docs/adr/ADR-009-backend-owned-github-oauth.md",
+            "docs/rag.md",
+            "backend/tests/integration/test_retrieval.py",
+            "backend/app/rag/keyword.py",
+            "backend/tests/unit/test_auth_routes.py",
+            "docs/README.md"
+          ],
+          "methods": [
+            "both",
+            "both",
+            "both",
+            "keyword",
+            "keyword",
+            "keyword",
+            "vector",
+            "keyword"
+          ],
+          "scores": {
+            "1": {
+              "recall": 1.0,
+              "precision": 1.0,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "3": {
+              "recall": 1.0,
+              "precision": 0.3333333333333333,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 1.0,
+              "precision": 0.2,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.1,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "id-06",
+          "query": "OllamaEmbedder",
+          "style": "identifier",
+          "expected": [
+            "backend/app/llm/ollama.py"
+          ],
+          "retrieved": [
+            "backend/tests/integration/test_ollama_live.py",
+            "backend/tests/unit/test_ollama_embedder.py",
+            "backend/app/routes/health.py",
+            "backend/app/workers/ingestion.py"
+          ],
+          "methods": [
+            "both",
+            "both",
+            "both",
+            "both"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "3": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "5": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "10": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            }
+          }
+        },
+        {
+          "id": "id-07",
+          "query": "session_scope",
+          "style": "identifier",
+          "expected": [
+            "backend/app/core/database.py"
+          ],
+          "retrieved": [
+            "backend/app/core/database.py",
+            "backend/tests/integration/test_retrieval.py",
+            "backend/app/workers/ingestion.py",
+            "backend/tests/integration/test_ingestion.py",
+            "backend/tests/integration/test_indexing_api.py"
+          ],
+          "methods": [
+            "both",
+            "both",
+            "both",
+            "both",
+            "both"
+          ],
+          "scores": {
+            "1": {
+              "recall": 1.0,
+              "precision": 1.0,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "3": {
+              "recall": 1.0,
+              "precision": 0.3333333333333333,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 1.0,
+              "precision": 0.2,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.1,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "id-08",
+          "query": "EMBEDDING_DIMENSIONS setting",
+          "style": "identifier",
+          "expected": [
+            "backend/app/core/config.py"
+          ],
+          "retrieved": [
+            "backend/tests/integration/test_ollama_live.py",
+            "backend/app/models/chunk.py",
+            "backend/app/llm/ollama.py",
+            "backend/tests/unit/test_ollama_embedder.py",
+            "backend/migrations/versions/b4bd11b55125_add_chunk_embeddings_and_hnsw_index.py",
+            "docs/README.md",
+            "docs/rag.md"
+          ],
+          "methods": [
+            "both",
+            "both",
+            "both",
+            "both",
+            "both",
+            "both",
+            "both"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "3": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "5": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "10": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            }
+          }
+        },
+        {
+          "id": "id-09",
+          "query": "enqueue_index_repository",
+          "style": "identifier",
+          "expected": [
+            "backend/app/queue/base.py",
+            "backend/app/queue/rq_backend.py"
+          ],
+          "retrieved": [
+            "backend/tests/integration/test_indexing_api.py",
+            "backend/app/queue/base.py",
+            "backend/app/queue/rq_backend.py",
+            "backend/app/routes/repositories.py",
+            "backend/tests/integration/test_ingestion.py",
+            "frontend/src/features/repositories/indexActions.ts",
+            "backend/app/ingestion/service.py",
+            "backend/app/models/job.py"
+          ],
+          "methods": [
+            "both",
+            "both",
+            "both",
+            "both",
+            "vector",
+            "vector",
+            "vector",
+            "vector"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "3": {
+              "recall": 1.0,
+              "precision": 0.6666666666666666,
+              "reciprocal_rank": 0.5,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 1.0,
+              "precision": 0.4,
+              "reciprocal_rank": 0.5,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.2,
+              "reciprocal_rank": 0.5,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "con-01",
+          "query": "how do I stop credentials from being fed to the language model",
+          "style": "conceptual",
+          "expected": [
+            "backend/app/ingestion/filters.py"
+          ],
+          "retrieved": [
+            ".env.example",
+            "docs/lld.md",
+            "docs/security.md",
+            "backend/app/core/config.py",
+            "backend/migrations/env.py",
+            "backend/tests/unit/test_ollama_embedder.py",
+            ".gitignore",
+            "backend/app/schemas/auth.py"
+          ],
+          "methods": [
+            "both",
+            "both",
+            "both",
+            "both",
+            "both",
+            "both",
+            "vector",
+            "vector"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "3": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "5": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "10": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            }
+          }
+        },
+        {
+          "id": "con-02",
+          "query": "what stops one customer seeing another customer's data",
+          "style": "conceptual",
+          "expected": [
+            "backend/app/rag/keyword.py",
+            "backend/app/rag/vector.py",
+            "backend/app/routes/repositories.py"
+          ],
+          "retrieved": [
+            "backend/tests/integration/test_auth_flow.py",
+            "docs/lld.md",
+            "docs/security.md",
+            "docs/adr/ADR-008-synchronous-sqlalchemy.md",
+            "docs/api.md",
+            "backend/app/routes/repositories.py",
+            "backend/tests/unit/test_auth_routes.py",
+            "backend/app/services/github.py",
+            "docs/adr/ADR-009-backend-owned-github-oauth.md"
+          ],
+          "methods": [
+            "both",
+            "both",
+            "both",
+            "both",
+            "both",
+            "both",
+            "vector",
+            "vector",
+            "keyword"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "3": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "5": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "10": {
+              "recall": 0.3333333333333333,
+              "precision": 0.1,
+              "reciprocal_rank": 0.16666666666666666,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "con-03",
+          "query": "how does the system avoid repeating expensive work when nothing changed",
+          "style": "conceptual",
+          "expected": [
+            "backend/app/ingestion/embedder.py",
+            "backend/app/ingestion/service.py"
+          ],
+          "retrieved": [
+            "backend/tests/integration/test_embedding.py",
+            "docs/adr/ADR-010-tarball-snapshots-instead-of-git-clone.md",
+            "backend/app/ingestion/service.py",
+            "backend/app/rag/reranker.py",
+            "docs/lld.md",
+            "docs/adr/ADR-008-synchronous-sqlalchemy.md",
+            "docs/adr/ADR-009-backend-owned-github-oauth.md",
+            "backend/app/models/job.py"
+          ],
+          "methods": [
+            "both",
+            "both",
+            "both",
+            "both",
+            "both",
+            "both",
+            "both",
+            "both"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "3": {
+              "recall": 0.5,
+              "precision": 0.3333333333333333,
+              "reciprocal_rank": 0.3333333333333333,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 0.5,
+              "precision": 0.2,
+              "reciprocal_rank": 0.3333333333333333,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 0.5,
+              "precision": 0.1,
+              "reciprocal_rank": 0.3333333333333333,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "con-04",
+          "query": "what happens if the machine learning service is switched off",
+          "style": "conceptual",
+          "expected": [
+            "backend/app/llm/ollama.py",
+            "backend/app/rag/retriever.py"
+          ],
+          "retrieved": [
+            "docs/lld.md",
+            "backend/tests/unit/test_health.py",
+            "backend/app/core/errors.py",
+            "backend/tests/integration/test_ollama_live.py",
+            "frontend/src/features/repositories/RepositoryActionButton.tsx",
+            "frontend/README.md",
+            "frontend/src/app/page.tsx",
+            "docs/deployment.md",
+            "backend/migrations/env.py",
+            "docs/api.md"
+          ],
+          "methods": [
+            "both",
+            "both",
+            "both",
+            "both",
+            "both",
+            "both",
+            "both",
+            "both",
+            "vector",
+            "keyword"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "3": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "5": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "10": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            }
+          }
+        },
+        {
+          "id": "con-05",
+          "query": "how is long running work kept off the web request path",
+          "style": "conceptual",
+          "expected": [
+            "backend/app/queue/rq_backend.py",
+            "backend/app/routes/repositories.py",
+            "backend/app/workers/ingestion.py"
+          ],
+          "retrieved": [
+            "backend/app/routes/jobs.py",
+            "docs/lld.md",
+            "docs/adr/ADR-009-backend-owned-github-oauth.md",
+            "backend/app/routes/repositories.py",
+            "backend/app/workers/run_worker.py",
+            "docs/security.md",
+            "backend/app/workers/ingestion.py",
+            "backend/app/llm/ollama.py",
+            "README.md"
+          ],
+          "methods": [
+            "both",
+            "both",
+            "both",
+            "both",
+            "both",
+            "both",
+            "both",
+            "both",
+            "both"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "3": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "5": {
+              "recall": 0.3333333333333333,
+              "precision": 0.2,
+              "reciprocal_rank": 0.25,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 0.6666666666666666,
+              "precision": 0.2,
+              "reciprocal_rank": 0.25,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "con-06",
+          "query": "how does the application avoid leaking internal details in failures",
+          "style": "conceptual",
+          "expected": [
+            "backend/app/core/errors.py"
+          ],
+          "retrieved": [
+            "backend/app/core/errors.py",
+            "backend/app/services/github.py",
+            "backend/tests/unit/test_errors.py",
+            "docs/api.md",
+            "backend/app/workers/ingestion.py",
+            "docs/lld.md",
+            "docs/security.md",
+            "backend/app/core/config.py"
+          ],
+          "methods": [
+            "both",
+            "both",
+            "both",
+            "both",
+            "both",
+            "both",
+            "both",
+            "both"
+          ],
+          "scores": {
+            "1": {
+              "recall": 1.0,
+              "precision": 1.0,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "3": {
+              "recall": 1.0,
+              "precision": 0.3333333333333333,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 1.0,
+              "precision": 0.2,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.1,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "con-07",
+          "query": "how can a request be traced through the logs",
+          "style": "conceptual",
+          "expected": [
+            "backend/app/core/logging.py",
+            "backend/app/core/middleware.py"
+          ],
+          "retrieved": [
+            "backend/app/core/middleware.py",
+            "docs/lld.md",
+            "backend/app/core/logging.py",
+            "backend/app/services/github.py",
+            "backend/tests/unit/test_health.py",
+            "backend/tests/unit/test_github_service.py",
+            "backend/app/core/deps.py"
+          ],
+          "methods": [
+            "both",
+            "both",
+            "both",
+            "both",
+            "both",
+            "both",
+            "both"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.5,
+              "precision": 1.0,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "3": {
+              "recall": 1.0,
+              "precision": 0.6666666666666666,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 1.0,
+              "precision": 0.4,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.2,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "con-08",
+          "query": "why would two pieces of retrieved text be combined into one ranking",
+          "style": "conceptual",
+          "expected": [
+            "backend/app/rag/fusion.py",
+            "backend/app/rag/retriever.py"
+          ],
+          "retrieved": [
+            "backend/app/rag/fusion.py",
+            "docs/adr/ADR-011-reciprocal-rank-fusion.md",
+            "docs/rag.md",
+            "backend/app/rag/types.py",
+            "backend/app/rag/keyword.py",
+            "docs/lld.md",
+            "backend/tests/unit/test_fusion.py"
+          ],
+          "methods": [
+            "both",
+            "both",
+            "both",
+            "both",
+            "both",
+            "both",
+            "both"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.5,
+              "precision": 1.0,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "3": {
+              "recall": 0.5,
+              "precision": 0.3333333333333333,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 0.5,
+              "precision": 0.2,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 0.5,
+              "precision": 0.1,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "con-09",
+          "query": "how are very large source files prevented from overwhelming the system",
+          "style": "conceptual",
+          "expected": [
+            "backend/app/ingestion/chunker.py",
+            "backend/app/ingestion/filters.py"
+          ],
+          "retrieved": [
+            "backend/app/ingestion/filters.py",
+            "docs/rag.md",
+            "backend/app/ingestion/chunker.py",
+            "backend/app/models/file.py",
+            "backend/tests/unit/test_chunker.py",
+            "docs/adr/ADR-002-ast-aware-chunking.md",
+            "backend/tests/unit/test_filters.py"
+          ],
+          "methods": [
+            "both",
+            "both",
+            "both",
+            "both",
+            "both",
+            "both",
+            "both"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.5,
+              "precision": 1.0,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "3": {
+              "recall": 1.0,
+              "precision": 0.6666666666666666,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 1.0,
+              "precision": 0.4,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.2,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "con-10",
+          "query": "what protects against a malicious archive escaping its directory",
+          "style": "conceptual",
+          "expected": [
+            "backend/app/ingestion/fetcher.py"
+          ],
+          "retrieved": [
+            "backend/app/ingestion/fetcher.py",
+            "docs/adr/ADR-010-tarball-snapshots-instead-of-git-clone.md",
+            "README.md",
+            "backend/tests/unit/test_filters.py",
+            "docs/adr/ADR-006-sandbox-security-boundary.md",
+            "backend/app/ingestion/discovery.py",
+            "backend/app/ingestion/filters.py"
+          ],
+          "methods": [
+            "both",
+            "both",
+            "both",
+            "both",
+            "both",
+            "both",
+            "both"
+          ],
+          "scores": {
+            "1": {
+              "recall": 1.0,
+              "precision": 1.0,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "3": {
+              "recall": 1.0,
+              "precision": 0.3333333333333333,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 1.0,
+              "precision": 0.2,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.1,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "mix-01",
+          "query": "where is the OAuth callback handled",
+          "style": "mixed",
+          "expected": [
+            "backend/app/routes/auth.py"
+          ],
+          "retrieved": [
+            "backend/app/routes/auth.py",
+            "README.md",
+            "frontend/src/features/auth/SignInButton.tsx",
+            "frontend/src/app/page.tsx",
+            "backend/tests/integration/test_auth_flow.py",
+            "backend/tests/integration/test_retrieval.py",
+            "docs/api.md",
+            "docs/adr/ADR-009-backend-owned-github-oauth.md"
+          ],
+          "methods": [
+            "both",
+            "both",
+            "both",
+            "both",
+            "both",
+            "both",
+            "both",
+            "both"
+          ],
+          "scores": {
+            "1": {
+              "recall": 1.0,
+              "precision": 1.0,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "3": {
+              "recall": 1.0,
+              "precision": 0.3333333333333333,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 1.0,
+              "precision": 0.2,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.1,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "mix-02",
+          "query": "how are GitHub access tokens encrypted before being stored",
+          "style": "mixed",
+          "expected": [
+            "backend/app/core/security.py"
+          ],
+          "retrieved": [
+            "backend/tests/integration/test_auth_flow.py",
+            "backend/app/core/deps.py",
+            "backend/app/core/security.py",
+            "docs/adr/ADR-009-backend-owned-github-oauth.md",
+            "README.md",
+            "docs/README.md",
+            "docs/security.md",
+            "backend/migrations/versions/b16807414425_store_encrypted_github_access_token_on_.py"
+          ],
+          "methods": [
+            "both",
+            "both",
+            "both",
+            "both",
+            "both",
+            "both",
+            "both",
+            "both"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "3": {
+              "recall": 1.0,
+              "precision": 0.3333333333333333,
+              "reciprocal_rank": 0.3333333333333333,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 1.0,
+              "precision": 0.2,
+              "reciprocal_rank": 0.3333333333333333,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.1,
+              "reciprocal_rank": 0.3333333333333333,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "mix-03",
+          "query": "how are source files split into chunks",
+          "style": "mixed",
+          "expected": [
+            "backend/app/ingestion/chunker.py"
+          ],
+          "retrieved": [
+            "backend/app/ingestion/chunker.py",
+            "backend/app/models/chunk.py",
+            "docs/rag.md",
+            "docs/adr/ADR-002-ast-aware-chunking.md",
+            "backend/tests/unit/test_chunker.py",
+            "backend/tests/integration/test_embedding.py"
+          ],
+          "methods": [
+            "both",
+            "both",
+            "both",
+            "both",
+            "both",
+            "both"
+          ],
+          "scores": {
+            "1": {
+              "recall": 1.0,
+              "precision": 1.0,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "3": {
+              "recall": 1.0,
+              "precision": 0.3333333333333333,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 1.0,
+              "precision": 0.2,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.1,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "mix-04",
+          "query": "how do I run the background worker",
+          "style": "mixed",
+          "expected": [
+            "backend/app/workers/run_worker.py"
+          ],
+          "retrieved": [
+            "backend/app/workers/run_worker.py",
+            "backend/app/queue/base.py",
+            "frontend/src/app/globals.css",
+            "backend/app/schemas/job.py",
+            "backend/app/workers/ingestion.py",
+            "docs/deployment.md",
+            "README.md",
+            "docs/agents.md"
+          ],
+          "methods": [
+            "both",
+            "both",
+            "both",
+            "both",
+            "both",
+            "both",
+            "both",
+            "both"
+          ],
+          "scores": {
+            "1": {
+              "recall": 1.0,
+              "precision": 1.0,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "3": {
+              "recall": 1.0,
+              "precision": 0.3333333333333333,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 1.0,
+              "precision": 0.2,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.1,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "mix-05",
+          "query": "which file extensions map to a parser",
+          "style": "mixed",
+          "expected": [
+            "backend/app/ingestion/languages.py"
+          ],
+          "retrieved": [
+            "backend/app/ingestion/languages.py",
+            "backend/app/ingestion/chunker.py",
+            "backend/app/models/file.py",
+            "backend/app/ingestion/discovery.py",
+            "docs/lld.md",
+            "backend/tests/unit/test_chunker.py",
+            "backend/app/models/chunk.py",
+            "docs/rag.md"
+          ],
+          "methods": [
+            "both",
+            "both",
+            "both",
+            "both",
+            "both",
+            "both",
+            "both",
+            "both"
+          ],
+          "scores": {
+            "1": {
+              "recall": 1.0,
+              "precision": 1.0,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "3": {
+              "recall": 1.0,
+              "precision": 0.3333333333333333,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 1.0,
+              "precision": 0.2,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.1,
+              "reciprocal_rank": 1.0,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "mix-06",
+          "query": "how is the health of the database and cache reported",
+          "style": "mixed",
+          "expected": [
+            "backend/app/routes/health.py"
+          ],
+          "retrieved": [
+            "backend/tests/integration/test_infrastructure.py",
+            "backend/tests/unit/test_health.py",
+            "backend/app/routes/health.py",
+            "docs/api.md",
+            "docs/deployment.md",
+            "docs/README.md"
+          ],
+          "methods": [
+            "both",
+            "both",
+            "both",
+            "both",
+            "both",
+            "both"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "3": {
+              "recall": 1.0,
+              "precision": 0.3333333333333333,
+              "reciprocal_rank": 0.3333333333333333,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 1.0,
+              "precision": 0.2,
+              "reciprocal_rank": 0.3333333333333333,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.1,
+              "reciprocal_rank": 0.3333333333333333,
+              "hit": 1.0
+            }
+          }
+        },
+        {
+          "id": "mix-07",
+          "query": "how does the API know which user is making a request",
+          "style": "mixed",
+          "expected": [
+            "backend/app/core/deps.py"
+          ],
+          "retrieved": [
+            "backend/app/services/github.py",
+            "docs/lld.md",
+            "backend/app/core/deps.py",
+            "backend/tests/integration/test_indexing_api.py",
+            "backend/tests/unit/test_auth_routes.py",
+            "backend/app/routes/auth.py",
+            "backend/app/core/config.py"
+          ],
+          "methods": [
+            "both",
+            "both",
+            "both",
+            "both",
+            "both",
+            "both",
+            "keyword"
+          ],
+          "scores": {
+            "1": {
+              "recall": 0.0,
+              "precision": 0.0,
+              "reciprocal_rank": 0.0,
+              "hit": 0.0
+            },
+            "3": {
+              "recall": 1.0,
+              "precision": 0.3333333333333333,
+              "reciprocal_rank": 0.3333333333333333,
+              "hit": 1.0
+            },
+            "5": {
+              "recall": 1.0,
+              "precision": 0.2,
+              "reciprocal_rank": 0.3333333333333333,
+              "hit": 1.0
+            },
+            "10": {
+              "recall": 1.0,
+              "precision": 0.1,
+              "reciprocal_rank": 0.3333333333333333,
+              "hit": 1.0
+            }
+          }
+        }
+      ],
+      "elapsed_seconds": 63.00211330000093
+    }
+  },
+  "generated_at": "2026-09-01T16:43:34.207379+00:00"
+}

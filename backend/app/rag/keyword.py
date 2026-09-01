@@ -23,8 +23,10 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from sqlalchemy import Row, Text, func, select
+from sqlalchemy import Row, Text, cast, func, literal, select
+from sqlalchemy.dialects.postgresql import TSQUERY
 from sqlalchemy.orm import Session
+from sqlalchemy.sql.elements import ColumnElement
 
 from app.core.logging import get_logger
 from app.models.chunk import CodeChunk
@@ -82,21 +84,32 @@ def search(
 ) -> list[Candidate]:
     """Return the ``limit`` best full-text matches for ``query_text``.
 
-    Tries the strict all-terms query first and falls back to any-terms only if
-    it matched nothing: precision when it is available, recall when it is not.
-    A two-stage fallback rather than always ORing, because when every term is
-    present that really is the better match, and ORing would bury it under
-    chunks that share one common word.
+    Runs the strict all-terms query first, then **tops up** from the any-terms
+    query until ``limit`` candidates are collected. Strict matches keep their
+    positions at the front, because when every term is present that really is
+    the better match; the relaxed results fill the rest of the budget rather
+    than leaving it unused.
+
+    Topping up rather than only falling back when strict finds nothing: the
+    caller asks for a wide candidate set (~50) precisely so fusion and, later,
+    the reranker have something to work with. Returning three candidates when
+    fifty were requested wastes that budget, and fusion is what re-imposes
+    precision on the wider set.
     """
     rendered = build_query(session, query_text)
     if rendered is None:
         return []
 
-    rows = _run(session, repository_id, func.to_tsquery(CONFIGURATION, rendered), limit)
-    if not rows:
-        relaxed = relax(rendered)
-        if relaxed != rendered:
-            rows = _run(session, repository_id, func.to_tsquery(CONFIGURATION, relaxed), limit)
+    rows = _run(session, repository_id, _as_tsquery(rendered), limit)
+
+    relaxed = relax(rendered)
+    if len(rows) < limit and relaxed != rendered:
+        seen = {row.id for row in rows}
+        for row in _run(session, repository_id, _as_tsquery(relaxed), limit):
+            if row.id not in seen:
+                rows.append(row)
+                if len(rows) >= limit:
+                    break
 
     return [
         Candidate(
@@ -114,7 +127,24 @@ def search(
     ]
 
 
-def _run(session: Session, repository_id: uuid.UUID, tsquery: object, limit: int) -> list[Row[Any]]:
+def _as_tsquery(rendered: str) -> ColumnElement[Any]:
+    """Turn a rendered tsquery back into a tsquery value.
+
+    A **cast**, not ``to_tsquery``. Feeding the rendered text back through
+    ``to_tsquery`` re-normalises the lexemes, which silently corrupts any term
+    whose stem stems again: ``something_else`` renders as ``'someth' <-> 'els'``
+    and comes back as ``'someth' <-> 'el'``, which then matches nothing. The
+    cast parses the lexeme syntax verbatim.
+    """
+    return cast(literal(rendered), TSQUERY)
+
+
+def _run(
+    session: Session,
+    repository_id: uuid.UUID,
+    tsquery: ColumnElement[Any],
+    limit: int,
+) -> list[Row[Any]]:
     rank = func.ts_rank(CodeChunk.content_tsv, tsquery)
     return list(
         session.execute(

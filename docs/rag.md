@@ -1,9 +1,8 @@
 # RAG architecture
 
-> **Status:** ingestion, embedding and **hybrid retrieval** are built and
-> verified as of milestone 5. Reranking is a labelled passthrough until
-> milestone 7; the inspector UI (8) and the evaluation harness (6) are still
-> design only, and are marked below.
+> **Status:** ingestion, embedding, hybrid retrieval and the **evaluation
+> harness** are built and verified as of milestone 6. Reranking is a labelled
+> passthrough until milestone 7; the inspector UI (8) is still design only.
 
 ## Ingestion — implemented (milestones 3–4)
 
@@ -168,9 +167,13 @@ precision where it is available, recall where it is not. Phrase groupings
 The two retrievers fail in opposite directions, which is the entire reason for
 running both:
 
-- **Vector search** handles conceptual queries ("how is payment retried?") but
-  is unreliable for exact identifiers, where an embedding of `parse_config` sits
-  near many similar-looking names.
+- **Vector search** handles conceptual queries ("how is payment retried?").
+  It was expected to be unreliable for exact identifiers, where an embedding of
+  `parse_config` sits near many similar-looking names — but **measurement
+  contradicted that** for this corpus and model: vector-only scored 0.833
+  recall@5 on identifier questions against keyword-only's 0.667. The assumption
+  is left recorded here because it drove the design; the measurement is what
+  should be believed.
 - **Keyword search** (PostgreSQL `tsvector`) is exact for function and class
   names, error strings, file paths, routes and constants, but fails when the
   user's words differ from the code's.
@@ -228,13 +231,40 @@ reranker score, selected or not, and the code excerpt.
 This exists so retrieval failures are diagnosable — the point is to be able to
 see *why* an answer was wrong, not merely that it was.
 
-## Evaluation
+## Evaluation — implemented (milestone 6)
 
-A labelled benchmark of 20–30 real questions mapped to expected
-files/functions/lines, built in milestone 6 — before reranking.
+    python -m eval
 
-Retrieval metrics: **Recall@K**, **Precision@K**. Answer metrics: groundedness
-and citation accuracy. The suite is re-run whenever chunking, the embedding
-model, the reranker, or prompts change, so regressions surface immediately.
+26 labelled questions about this codebase, each mapped to the file(s) that
+answer it. Labels are paths, not line numbers, so ordinary edits do not
+invalidate them, and the harness **refuses to run** if any labelled file is
+missing from the index — a stale benchmark silently scoring zero looks exactly
+like a retrieval regression.
 
-Numbers are only ever recorded from actual runs.
+Relevance is judged at **file** granularity. Whether a retriever returned the
+`classify` chunk or the `is_secret_path` chunk of `filters.py` is a distinction
+the benchmark has no principled basis to make. Results are deduplicated to one
+entry per file before scoring, so a retriever returning several chunks from one
+file does not inflate its own precision.
+
+Three configurations are measured over the same questions — vector only,
+keyword only, hybrid — because reporting hybrid alone would be an assertion
+rather than evidence. The reranker is the passthrough throughout: these are the
+pre-reranking baseline that milestone 7 must beat.
+
+The question mix is deliberate and asserted by a test: roughly a third phrased
+around an exact identifier, a third conceptual with no shared vocabulary with
+the code, a third in between. A benchmark loaded with identifier questions
+would flatter keyword search.
+
+Answer metrics — groundedness and citation accuracy — arrive with chat in
+milestone 7, since there are no answers to score yet.
+
+Numbers are only ever recorded from actual runs. Results are written to
+`eval/results/` and the most recent is served by `GET /evaluations`.
+
+### Baseline results
+
+See [`docs/README.md`](README.md#milestone-6--what-was-verified) for the
+measured numbers, the four findings that came out of them, and the two
+limitations of the benchmark itself.

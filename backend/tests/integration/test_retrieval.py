@@ -376,3 +376,41 @@ def test_the_trace_reports_what_each_retriever_contributed(
     # The reranker is inert and says so.
     assert result.reranker_is_passthrough is True
     assert all(c.rerank_score is None for c in result.chunks)
+
+
+def test_lexemes_that_stem_twice_still_match(indexed: uuid.UUID) -> None:
+    """Regression: the rendered tsquery must not be re-normalised.
+
+    Feeding a rendered tsquery back through ``to_tsquery`` stems the lexemes a
+    second time. ``something_else`` renders as ``'someth' <-> 'els'`` and comes
+    back as ``'someth' <-> 'el'``, which matches nothing -- a silent recall
+    loss affecting only terms whose stem stems again, which is exactly the kind
+    of bug that hides until a benchmark measures it.
+    """
+    with session_scope() as session:
+        source = session.execute(
+            select(File).where(File.repository_id == indexed)
+        ).scalars().first()
+        assert source is not None
+        session.add(
+            CodeChunk(
+                file_id=source.id,
+                repository_id=indexed,
+                content="def something_else(y):\n    return y\n",
+                symbol="something_else",
+                kind=ChunkKind.function,
+                start_line=90,
+                end_line=91,
+                chunk_hash="e" * 64,
+                embedding=ControlledEmbedder._vector(0),
+                embedding_model="controlled",
+            )
+        )
+
+    with session_scope() as session:
+        results = keyword.search(
+            session, repository_id=indexed, query_text="something_else", limit=10
+        )
+
+    assert results, "a doubly-stemming identifier must still be findable"
+    assert results[0].symbol == "something_else"

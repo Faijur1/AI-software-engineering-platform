@@ -193,6 +193,23 @@ Searching a repository with no embedded chunks returns **422**, not an empty
 list: "nothing indexed" is a missing step the user can fix, and "nothing
 matched" is a real answer.
 
+### Evaluation
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/evaluations` | The most recent benchmark run |
+
+Reads reports written by `python -m eval`; it never runs the benchmark. A run
+takes minutes and needs the embedding model, so triggering it from an HTTP
+request would be the wrong shape. With no run yet, it returns **404** with an
+instruction rather than zeros — zeros would read as a catastrophic result
+rather than as no data. A truncated report is treated the same way.
+
+Each configuration reports `recall`, `precision` and `hit_rate` keyed by
+cutoff, plus `mrr` and a `by_style` breakdown. `reranker` names what was active
+during the run; while it reads `passthrough`, the numbers are the pre-reranking
+baseline.
+
 ## Planned endpoints
 
 | Method | Path | Purpose | Milestone |
@@ -204,7 +221,6 @@ matched" is a real answer.
 | POST | `/patches` | Create a proposed patch | 9 |
 | GET | `/patches/{id}` | Patch and its diff | 9 |
 | POST | `/patches/{id}/approve` | Approve a patch (human gate) | 9 |
-| GET | `/evaluations` | Benchmark results | 6 |
 
 ### Conventions for the ones not yet built
 

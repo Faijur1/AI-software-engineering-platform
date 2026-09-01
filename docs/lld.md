@@ -31,7 +31,7 @@ backend/
 │   └── workers/                worker entrypoints
 ├── migrations/                 Alembic
 ├── tests/{unit,integration}/
-└── eval/                       (planned) benchmark + metrics
+└── eval/                       benchmark, metrics, runner, saved results
 ```
 
 **Layering rule.** Routes validate and delegate; services hold business logic
@@ -256,3 +256,24 @@ which is what makes the cross-encoder in milestone 7 a drop-in rather than a
 restructuring. Either retriever failing degrades to the other and records a
 note, so a stopped Ollama produces keyword-only results with an explanation
 rather than an error page.
+
+### `eval/`
+
+`benchmark.py` holds the labelled questions. Each carries a `style` and a
+written `rationale` — the rationale exists so a disputed label can be argued
+about on the merits rather than quietly changed until a score improves.
+
+`metrics.py` is plain arithmetic with no library behind it, because the value
+of this milestone is that the numbers can be checked by hand. `precision_at_k`
+divides by `k` rather than by the number of results returned: three results
+where ten were allowed is genuinely worse, and normalising by the short list
+would hide an under-filled context window instead of penalising it.
+
+`runner.py` measures three configurations over the same questions, using the
+`use_vector` / `use_keyword` flags on `retrieve`. Reporting hybrid alone would
+be an assertion; the baselines are the evidence. It refuses to run when a
+labelled file is missing from the index, because scoring zero on a moved file
+is indistinguishable from a regression.
+
+`__main__.py` is the CLI. Reports are written to `eval/results/` and the newest
+is served read-only by `GET /evaluations`.

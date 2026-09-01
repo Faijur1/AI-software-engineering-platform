@@ -57,31 +57,44 @@ def retrieve(
     limit: int = DEFAULT_RESULT_LIMIT,
     candidate_limit: int = DEFAULT_CANDIDATE_LIMIT,
     reranker: Reranker | None = None,
+    use_vector: bool = True,
+    use_keyword: bool = True,
 ) -> RetrievalResult:
-    """Retrieve chunks for ``query`` within one repository."""
+    """Retrieve chunks for ``query`` within one repository.
+
+    ``use_vector`` and ``use_keyword`` disable one half. They exist so the
+    evaluation harness can measure each retriever alone against the same
+    benchmark -- a hybrid claim is worth nothing without the two baselines it
+    is being compared to.
+    """
     active_reranker = reranker or PassthroughReranker()
     trace = RetrievalTrace(query=query, repository_id=repository_id)
 
     vector_results = []
-    try:
-        query_vector = embedder.embed([query])[0]
-        vector_results = vector.search(
-            session,
-            repository_id=repository_id,
-            query_vector=query_vector,
-            limit=candidate_limit,
-        )
-    except Exception as exc:
-        # A failed embedding must not take the whole search down: keyword
-        # search alone still returns useful results, and the degradation is
-        # recorded rather than hidden.
-        logger.warning("vector_retrieval_failed", error=type(exc).__name__)
-        trace.notes.append(
-            "Vector search was unavailable; these results are keyword-only."
-        )
+    if not use_vector:
+        trace.notes.append("Vector search was disabled for this query.")
+    else:
+        try:
+            query_vector = embedder.embed([query])[0]
+            vector_results = vector.search(
+                session,
+                repository_id=repository_id,
+                query_vector=query_vector,
+                limit=candidate_limit,
+            )
+        except Exception as exc:
+            # A failed embedding must not take the whole search down: keyword
+            # search alone still returns useful results, and the degradation is
+            # recorded rather than hidden.
+            logger.warning("vector_retrieval_failed", error=type(exc).__name__)
+            trace.notes.append(
+                "Vector search was unavailable; these results are keyword-only."
+            )
 
     keyword_results = []
-    if keyword.build_query(session, query) is None:
+    if not use_keyword:
+        trace.notes.append("Keyword search was disabled for this query.")
+    elif keyword.build_query(session, query) is None:
         # Nothing searchable survived stopword removal.
         trace.notes.append(
             "The query contained no searchable terms for keyword search; "

@@ -6,7 +6,7 @@ to help with real software engineering tasks: answering questions about the
 code, investigating bugs, running tests safely in a sandbox, and proposing
 patches for human approval.
 
-> ### Current status: Stage 1, milestone 5 of 9 — hybrid retrieval
+> ### Current status: Stage 1, milestone 6 of 9 — measured retrieval
 >
 > Infrastructure, GitHub OAuth, repository connection, ingestion, embeddings
 > into pgvector and **hybrid retrieval (vector + full-text, rank-fused) are
@@ -14,10 +14,11 @@ patches for human approval.
 > implemented yet, and reranking is a deliberately inert placeholder until
 > milestone 7.
 >
-> **No claim is made yet about retrieval *quality*.** Individual queries look
-> good and one known failure is measurably fixed, but that is anecdote.
-> Recall@K and Precision@K against a labelled benchmark arrive in milestone 6;
-> two honest limitations are recorded in [`docs/README.md`](docs/README.md).
+> Retrieval quality is now **measured**, not asserted: 26 labelled questions,
+> three configurations, Recall@K and Precision@K from real runs. Hybrid beats
+> both baselines on recall past rank 1 and loses to vector-only at rank 1. The
+> numbers, four findings and the benchmark's own limitations are in
+> [`docs/README.md`](docs/README.md).
 >
 > [`docs/README.md`](docs/README.md) tracks exactly what is built, what is
 > verified, and what remains. Nothing is described as working until it has
@@ -153,6 +154,7 @@ See [`docs/security.md`](docs/security.md) for the full model.
 ./.venv/Scripts/python.exe -m pytest              # all tests
 ./.venv/Scripts/python.exe -m pytest -m "not integration"   # no services needed
 ./.venv/Scripts/python.exe -m pytest -m llm                 # needs Ollama running
+./.venv/Scripts/python.exe -m eval                          # retrieval benchmark
 ./.venv/Scripts/python.exe -m alembic check       # models vs migrations
 
 # Frontend — from frontend/

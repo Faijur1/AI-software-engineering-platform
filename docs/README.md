@@ -26,7 +26,7 @@ planned. Documents describing later milestones mark unbuilt sections as
 | 3 | Ingestion: discovery, filtering, tree-sitter parsing, chunking | ✅ **Done — verified** |
 | 4 | Embeddings + pgvector storage, incremental re-indexing | ✅ **Done — verified** |
 | 5 | Hybrid retrieval (vector + full-text), merge, dedupe | ✅ **Done — verified** |
-| 6 | Evaluation harness, labelled benchmark, Recall@K / Precision@K | ⬜ Not started |
+| 6 | Evaluation harness, labelled benchmark, Recall@K / Precision@K | ✅ **Done — verified** |
 | 7 | Reranking + chat answers with citations | ⬜ Not started |
 | 8 | RAG inspector UI | ⬜ Not started |
 | 9 | Agent loop, tools, Docker sandbox, patch proposal + diff viewer | ⬜ Not started |
@@ -213,3 +213,78 @@ hand, which is anecdote, not measurement. Recall@K and Precision@K against a
 labelled benchmark arrive in milestone 6 — and that benchmark must be built
 against the current passthrough reranker so the real reranker's contribution in
 milestone 7 can be demonstrated rather than asserted.
+
+### Milestone 6 — what was verified
+
+26 labelled questions, run against the real index of this repository at commit
+`1a797b7` (604 embedded chunks), with the reranker inert. **These are the
+pre-reranking baseline.**
+
+| configuration | R@1 | R@3 | R@5 | R@10 | P@5 | MRR |
+| --- | --- | --- | --- | --- | --- | --- |
+| vector only | 0.500 | 0.654 | **0.731** | 0.731 | 0.169 | **0.634** |
+| keyword only | 0.096 | 0.385 | 0.519 | 0.596 | 0.131 | 0.279 |
+| **hybrid** | 0.442 | **0.731** | **0.744** | **0.769** | **0.185** | 0.625 |
+
+Recall@5 by question style:
+
+| configuration | conceptual | identifier | mixed |
+| --- | --- | --- | --- |
+| vector only | 0.450 | **0.833** | **1.000** |
+| keyword only | 0.400 | 0.667 | 0.429 |
+| **hybrid** | **0.533** | 0.778 | **1.000** |
+
+#### Four findings
+
+**1. Hybrid wins on recall past rank 1, and loses at rank 1.** It beats both
+baselines at R@3, R@5, R@10 and every precision cutoff — but vector-only is
+better at R@1 (0.500 vs 0.442) and marginally better on MRR (0.634 vs 0.625).
+This is the trade-off predicted at milestone 5 and now measured: rank fusion
+rewards agreement, which demotes a correct top result that only one retriever
+found.
+
+**2. The design's assumption about identifiers was wrong.**
+[`rag.md`](rag.md) argued that vector search is unreliable for exact
+identifiers and keyword search covers that gap. On this corpus with
+`nomic-embed-text`, vector-only scored **0.833** recall@5 on identifier
+questions against keyword-only's **0.667**. The reason hybrid helps here is
+recall breadth, not the identifier weakness the design predicted. The
+assumption has been corrected in the document.
+
+**3. Keyword search is the weaker retriever throughout** — 0.279 MRR against
+0.634. It still earns its place, because it recovers cases vector search misses
+entirely, but "hybrid" here means "vector, topped up by keyword", not two equal
+contributors.
+
+**4. Tests and documentation crowd out implementation.** All five questions
+hybrid failed at K=5 failed the same way. Asking for `OllamaEmbedder` returns
+`test_ollama_embedder.py` and `test_ollama_live.py`; conceptual security
+questions return `docs/security.md` and `docs/lld.md`. The prose *about* the
+code out-competes the code. This is the single most actionable finding, and the
+most likely source of a real gain in milestone 7.
+
+#### A bug the benchmark caught immediately
+
+Building the harness exposed a genuine defect in milestone 5's keyword search.
+The relaxation step round-tripped the rendered tsquery through `to_tsquery`,
+which **re-stems** lexemes: `something_else` renders as `'someth' <-> 'els'`
+and came back as `'someth' <-> 'el'`, matching nothing. It silently affected
+only terms whose stem stems again, which is why nothing noticed. Fixed by
+casting `text::tsquery`, which parses lexemes verbatim, with a regression test.
+
+#### Two limitations of the benchmark itself
+
+**26 questions is small.** A difference of 0.04 in recall is one question. The
+gaps between hybrid and vector-only at R@1 and MRR are within that margin and
+should not be treated as established.
+
+**The benchmark has now been used for tuning, so it is no longer fully
+held out.** After measuring, keyword search was changed to top up its candidate
+list from the relaxed query rather than only falling back when the strict query
+found nothing. That change is independently justified — returning 3 candidates
+when 50 were requested wastes the budget fusion exists to use — but it was made
+with the numbers visible. Tuning was stopped there deliberately. **Future
+tuning claims need held-out questions the tuner has not seen.**
+
+- Quality gate: `ruff` clean, `mypy --strict` clean on 59 files, 216 tests
+  passing, `tsc --noEmit` clean, `eslint` clean, `next build` succeeding.
