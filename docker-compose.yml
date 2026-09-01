@@ -1,0 +1,38 @@
+# Local development infrastructure only.
+# The application itself (backend, workers, frontend) runs on the host during
+# Stage 1 development for fast iteration. Only stateful dependencies live here.
+services:
+  postgres:
+    # pgvector ships the extension prebuilt; ADR-001 keeps vectors in Postgres.
+    image: pgvector/pgvector:pg16
+    container_name: aisep-postgres
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: aisep
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d aisep"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: aisep-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_data:
+  redis_data:
