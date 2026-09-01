@@ -5,6 +5,7 @@ import { UserMenu } from "@/features/auth/UserMenu";
 import type { User } from "@/features/auth/types";
 import { IndexButton } from "@/features/repositories/IndexButton";
 import { RepositoryActionButton } from "@/features/repositories/RepositoryActionButton";
+import { SearchPanel } from "@/features/search/SearchPanel";
 import {
   connectRepository,
   disconnectRepository,
@@ -64,6 +65,10 @@ export default async function RepositoriesPage({ searchParams }: PageProps) {
     );
   }
 
+  // Search needs vectors, so it is offered only where they exist. Showing a
+  // search box that cannot return anything would be worse than showing none.
+  const searchable = connected.find((repo) => repo.embedded_chunks > 0);
+
   return (
     <Shell user={user}>
       <h1 className="text-2xl font-semibold">Repositories</h1>
@@ -114,6 +119,8 @@ export default async function RepositoriesPage({ searchParams }: PageProps) {
           </ul>
         )}
       </section>
+
+      {searchable && <SearchPanel repositoryId={searchable.id} />}
 
       <section className="mt-10">
         <h2 className="text-sm font-medium text-black/70 dark:text-white/70">

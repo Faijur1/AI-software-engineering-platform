@@ -146,6 +146,53 @@ tied to stage boundaries — it exists to show that work is advancing, not to
 estimate completion. `error` carries only messages already judged safe to show
 a user; an unexpected exception is logged in full and reported generically.
 
+### Search
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| POST | `/repositories/{id}/search` | Hybrid retrieval over one repository |
+
+Synchronous, unlike indexing: one embedding call plus two indexed queries, so
+it answers in well under a second and needs no job.
+
+Request is `{query, limit}`. The response carries per-result evidence, not just
+a ranking:
+
+```json
+{
+  "results": [{
+    "file_path": "backend/app/routes/auth.py",
+    "symbol": "github_callback",
+    "start_line": 91, "end_line": 142,
+    "method": "both",
+    "fused_score": 0.0313,
+    "vector_score": 0.652, "vector_rank": 7,
+    "keyword_score": 0.0030, "keyword_rank": 1,
+    "rerank_score": null
+  }],
+  "vector_candidates": 50, "keyword_candidates": 2, "fused_candidates": 50,
+  "notes": [],
+  "reranker": "passthrough", "reranker_is_passthrough": true
+}
+```
+
+`method` is `vector`, `keyword` or `both`. `fused_score` is RRF (ADR-011) and
+is comparable **only within one query's results** — it is not a relevance
+percentage. Each retriever's own score and rank are returned so a ranking can
+be explained; that is what the inspector reads in milestone 8.
+
+`rerank_score` is `null` while the reranker is a passthrough. Null means *not
+reranked*, never *reranked and unchanged*, and `reranker_is_passthrough` says
+so explicitly so no UI implies a step that has not happened.
+
+`notes` reports degradation: a stopword-only query, or an embedding backend
+that is down. A half-working hybrid search is stated rather than silently
+returned as if whole.
+
+Searching a repository with no embedded chunks returns **422**, not an empty
+list: "nothing indexed" is a missing step the user can fix, and "nothing
+matched" is a real answer.
+
 ## Planned endpoints
 
 | Method | Path | Purpose | Milestone |

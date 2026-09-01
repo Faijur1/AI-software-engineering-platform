@@ -16,7 +16,7 @@ import { ApiError, apiFetch } from "@/lib/api";
  */
 export async function authedFetch<T>(
   path: string,
-  options: RequestInit = {},
+  options: RequestInit & { timeoutMs?: number } = {},
 ): Promise<T> {
   const cookieHeader = (await cookies()).toString();
   return apiFetch<T>(path, {

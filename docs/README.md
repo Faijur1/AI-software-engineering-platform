@@ -25,7 +25,7 @@ planned. Documents describing later milestones mark unbuilt sections as
 | 2 | GitHub OAuth + repository listing | ✅ **Done — verified** |
 | 3 | Ingestion: discovery, filtering, tree-sitter parsing, chunking | ✅ **Done — verified** |
 | 4 | Embeddings + pgvector storage, incremental re-indexing | ✅ **Done — verified** |
-| 5 | Hybrid retrieval (vector + full-text), merge, dedupe | ⬜ Not started |
+| 5 | Hybrid retrieval (vector + full-text), merge, dedupe | ✅ **Done — verified** |
 | 6 | Evaluation harness, labelled benchmark, Recall@K / Precision@K | ⬜ Not started |
 | 7 | Reranking + chat answers with citations | ⬜ Not started |
 | 8 | RAG inspector UI | ⬜ Not started |
@@ -169,3 +169,47 @@ precisely what milestone 5 (hybrid retrieval) and milestone 6 (a labelled
 benchmark with Recall@K) exist to fix and to measure. **No retrieval-quality
 claim is being made at this milestone** — only that vectors are produced,
 stored, and searchable.
+
+### Milestone 5 — what was verified
+
+Against the **real** index of this repository:
+
+- **The milestone-4 failure is fixed.** "Where is the OAuth callback handled"
+  ranked the README first under vector-only search and never surfaced
+  `github_callback`. Under hybrid retrieval, `routes/auth.py:91
+  github_callback` ranks **first** — found by vector at rank 7 and by keyword
+  at rank 1, and lifted by appearing in both.
+- Fusion demotes a weak keyword match the vector side disagrees with: for the
+  query `github_callback`, keyword search ranked `.env.example` first (a short
+  file, which `ts_rank` favours); hybrid put the actual handler first and
+  `.env.example` fourth.
+- The live endpoint returns per-retriever scores and ranks, reports candidate
+  counts from each side, and reports `reranker_is_passthrough: true` with
+  `rerank_score: null` on every result.
+
+Asserted by the suite: RRF matches the published formula exactly; a chunk found
+by both outranks one found by either; raw scores a thousand times larger do not
+influence the merge; ties break deterministically; retrieval never crosses
+repository boundaries; a stopword-only query degrades to vector-only *and says
+so*; a failed embedder degrades to keyword-only *and says so*; unembedded
+chunks are excluded rather than treated as distant; and the passthrough
+reranker neither reorders nor fabricates a score.
+
+- Quality gate: `ruff` clean, `mypy --strict` clean on 57 files, 194 tests
+  passing, `tsc --noEmit` clean, `eslint` clean, `next build` succeeding.
+
+#### Two honest limitations
+
+**Hybrid is not uniformly better.** For "how do I run the ingestion worker",
+`workers/run_worker.py` was vector rank 1 — the right answer — but keyword
+search did not find it, so RRF placed it **fifth**, behind four chunks both
+retrievers agreed on. Rewarding agreement is usually right and is the whole
+point of fusion, but it demotes a correct result that only one retriever found.
+This is a real trade-off of rank fusion, not a bug, and it is exactly the kind
+of thing the milestone-6 benchmark exists to quantify.
+
+**Still no retrieval-quality claim.** These are individual queries chosen by
+hand, which is anecdote, not measurement. Recall@K and Precision@K against a
+labelled benchmark arrive in milestone 6 — and that benchmark must be built
+against the current passthrough reranker so the real reranker's contribution in
+milestone 7 can be demonstrated rather than asserted.

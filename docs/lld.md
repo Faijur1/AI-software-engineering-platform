@@ -23,7 +23,7 @@ backend/
 │   ├── services/               business logic (github.py, users.py)
 │   ├── ingestion/              languages, filters, fetcher, discovery, chunker,
 │   │                           embedder, service
-│   ├── rag/                    (planned) retrievers, merge, rerank, context
+│   ├── rag/                    vector, keyword, fusion, reranker, retriever
 │   ├── llm/                    EmbeddingProvider + Ollama implementation
 │   ├── agent/                  (planned) engine, state, tools/
 │   ├── sandbox/                (planned) Docker runner
@@ -231,3 +231,28 @@ rather than holding a list, so a first index, a resumed run and a model change
 all fall out of one predicate. Batches are flushed as they complete, and the
 batch loop re-queries rather than paginating with an offset — each written
 batch leaves the pending set, so a fixed offset would skip rows.
+
+### `rag/`
+
+`vector.py` and `keyword.py` are two independent retrievers with the same
+output type. Neither knows about the other, which is what keeps fusion a pure
+function over two ranked lists and therefore exactly testable.
+
+Both filter on `repository_id` as their first predicate. That is the tenant
+isolation boundary, and the reason the column is denormalised onto chunks: it
+must be impossible to forget in a join.
+
+`fusion.py` implements RRF (ADR-011). It merges by rank, so the two score
+distributions never have to be reconciled, and it keeps both retrievers'
+evidence on each result rather than collapsing to one number.
+
+`reranker.py` defines the `Reranker` protocol and ships `PassthroughReranker`.
+The protocol carries `is_passthrough` deliberately: a UI that cannot tell a
+real reranker from a placeholder invites exactly the unearned confidence this
+project is trying to avoid.
+
+`retriever.py` orchestrates. It retrieves wide (~50) and returns narrow (~10),
+which is what makes the cross-encoder in milestone 7 a drop-in rather than a
+restructuring. Either retriever failing degrades to the other and records a
+note, so a stopped Ollama produces keyword-only results with an explanation
+rather than an error page.

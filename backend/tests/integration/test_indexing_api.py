@@ -315,3 +315,36 @@ def test_repository_listing_reports_real_index_counts(
     assert listed["chunk_count"] == 2
     # A partial embedding pass is reported as partial, not rounded up.
     assert listed["embedded_chunks"] == 1
+
+
+def test_searching_an_unindexed_repository_says_so(
+    client: TestClient, github: Callable[[int, str], None], enqueued: list[uuid.UUID]
+) -> None:
+    """"Nothing indexed" and "nothing matched" are different answers."""
+    github(ALICE, "alice")
+    _sign_in(client)
+    repository_id = _connect(client)
+
+    response = client.post(
+        f"/repositories/{repository_id}/search", json={"query": "anything"}
+    )
+
+    assert response.status_code == 422
+    assert "Index it first" in response.json()["error"]["message"]
+
+
+def test_searching_another_users_repository_is_not_found(
+    client: TestClient, github: Callable[[int, str], None], enqueued: list[uuid.UUID]
+) -> None:
+    github(ALICE, "alice")
+    _sign_in(client)
+    alice_repo = _connect(client)
+
+    with TestClient(client.app, raise_server_exceptions=False) as bob:
+        github(BOB, "bob")
+        _sign_in(bob)
+        response = bob.post(
+            f"/repositories/{alice_repo}/search", json={"query": "anything"}
+        )
+
+    assert response.status_code == 404

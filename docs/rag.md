@@ -1,8 +1,9 @@
 # RAG architecture
 
-> **Status:** ingestion and embedding are **built and verified** as of
-> milestone 4. Retrieval, reranking, the inspector and evaluation
-> (milestones 5–8) are still design only, and are marked below.
+> **Status:** ingestion, embedding and **hybrid retrieval** are built and
+> verified as of milestone 5. Reranking is a labelled passthrough until
+> milestone 7; the inspector UI (8) and the evaluation harness (6) are still
+> design only, and are marked below.
 
 ## Ingestion — implemented (milestones 3–4)
 
@@ -123,13 +124,44 @@ existed.
 Measured on a real repository of 457 chunks: a full index with embedding took
 **149 s**; re-indexing with nothing changed took **8 s**.
 
-## Retrieval
+## Retrieval — implemented (milestone 5)
 
 ```
-query -> preprocess -> [ vector search | keyword search ]
-      -> normalise scores -> merge -> deduplicate
-      -> rerank -> context builder -> LLM
+query -> embed --------> vector search  --      -> tsquery ------> keyword search --> RRF fuse -> dedupe -> rerank -> top K
 ```
+
+Everything up to and including fusion runs today. The reranker is a
+**passthrough that says so** (see below), and the context builder arrives with
+chat in milestone 7.
+
+`POST /repositories/{id}/search` exposes this, returning each retriever's own
+score and rank per result alongside the fused score.
+
+### Query preprocessing
+
+`websearch_to_tsquery` builds the keyword query: it accepts what people
+actually type — quoted phrases, `or`, a leading minus — without raising on
+punctuation. A query of nothing but stopwords yields an empty tsquery, which is
+detected and reported rather than silently matching everything at rank zero.
+
+Two properties of the `english` configuration were **measured against the real
+index**, not assumed:
+
+- **`snake_case` is split on underscores.** `github_callback` indexes as
+  `'github' 'callback'`, and the same input becomes the phrase
+  `'github' <-> 'callback'`. This is what lets an identifier query match a
+  definition precisely, and it is what recovers the case vector search misses.
+- **`camelCase` is not split.** `OllamaEmbedder` indexes as one stemmed token,
+  so searching `Ollama` alone will not find it. A real limitation of this
+  configuration; a custom tokeniser would be the fix, and milestone 6 is where
+  its cost gets measured rather than guessed at.
+
+`websearch_to_tsquery` also **ANDs** every term, which is far too strict for a
+prose question over code — "where is the oauth callback handled in the backend"
+requires a chunk containing all six terms. Keyword search therefore tries the
+strict query first and retries with the terms OR'd only if it matched nothing:
+precision where it is available, recall where it is not. Phrase groupings
+(`<->`) survive the relaxation, so split identifiers still match as units.
 
 ### Why hybrid
 
@@ -143,10 +175,24 @@ running both:
   names, error strings, file paths, routes and constants, but fails when the
   user's words differ from the code's.
 
-Scores from the two are not comparable, so each result set is normalised before
-merging, and a chunk found by both is ranked more highly than one found by
-either alone. Deduplication is by chunk ID, retaining the best evidence of
-retrieval method for the inspector.
+Scores from the two are not comparable, so results are merged by **rank**
+rather than by rescaled score — Reciprocal Rank Fusion, `Σ 1/(k + rank)` with
+k=60 (**ADR-011**). A chunk found by both retrievers receives two contributions
+and therefore outranks one found by either alone, with no hand-tuned weight.
+
+Measured, the distributions really are unrelated: cosine similarity clusters in
+a narrow band (top and tenth results differ by ~0.05), while `ts_rank` ranged
+from 0.003 to 0.86 across queries on the same index. Min-max scaling either one
+manufactures large apparent differences out of noise, and scales a lone keyword
+match to a perfect 1.0.
+
+Deduplication is by chunk id, keeping **both** retrievers' scores and ranks, so
+the inspector can explain a ranking rather than assert it. Ties break on chunk
+id, so evaluation runs in milestone 6 are reproducible.
+
+A consequence worth stating plainly: **fused scores are not interpretable in
+absolute terms.** 0.032 means "near the top of both lists", not "3.2% relevant",
+and is comparable only within one query's results.
 
 ### Reranking
 
@@ -159,6 +205,12 @@ The reranker sits behind an interface. Milestones 5–6 ship a passthrough
 implementation — honestly labelled as such — so that the evaluation baseline is
 established *before* the real reranker is added and its contribution can be
 measured rather than assumed.
+
+The passthrough truncates and does not reorder. It leaves `rerank_score` as
+**null** rather than copying the fused score across, so nothing downstream can
+mistake "not reranked" for "reranked and unchanged", and the API reports
+`reranker_is_passthrough` so a UI cannot imply a quality step that has not
+happened.
 
 ### Context building
 

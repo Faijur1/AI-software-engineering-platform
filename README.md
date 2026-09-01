@@ -6,17 +6,18 @@ to help with real software engineering tasks: answering questions about the
 code, investigating bugs, running tests safely in a sandbox, and proposing
 patches for human approval.
 
-> ### Current status: Stage 1, milestone 4 of 9 — embeddings
+> ### Current status: Stage 1, milestone 5 of 9 — hybrid retrieval
 >
-> Infrastructure, GitHub OAuth, repository connection, ingestion (discovery,
-> filtering, tree-sitter parsing, chunking) and **embeddings into pgvector are
-> built and verified.** Hybrid retrieval, chat, the RAG inspector and the agent
-> are not implemented yet.
+> Infrastructure, GitHub OAuth, repository connection, ingestion, embeddings
+> into pgvector and **hybrid retrieval (vector + full-text, rank-fused) are
+> built and verified.** Chat, the RAG inspector and the agent are not
+> implemented yet, and reranking is a deliberately inert placeholder until
+> milestone 7.
 >
-> Vectors are produced, stored and searchable. **No claim is made yet about
-> retrieval *quality*** — that is measured against a labelled benchmark in
-> milestone 6, and a known weakness is recorded in
-> [`docs/README.md`](docs/README.md).
+> **No claim is made yet about retrieval *quality*.** Individual queries look
+> good and one known failure is measurably fixed, but that is anecdote.
+> Recall@K and Precision@K against a labelled benchmark arrive in milestone 6;
+> two honest limitations are recorded in [`docs/README.md`](docs/README.md).
 >
 > [`docs/README.md`](docs/README.md) tracks exactly what is built, what is
 > verified, and what remains. Nothing is described as working until it has
@@ -32,6 +33,7 @@ patches for human approval.
 | Queue | Redis + RQ (ADR-003) |
 | Parsing | tree-sitter, AST-aware chunking (ADR-002) |
 | Embeddings | Ollama — `nomic-embed-text`, 768-dim, pgvector + HNSW |
+| Retrieval | Hybrid: pgvector cosine + Postgres full-text, RRF-fused (ADR-011) |
 | LLM | Ollama — `qwen2.5-coder:7b` *(planned)* |
 | Auth | GitHub OAuth, backend-owned; signed HttpOnly session cookie |
 | Sandbox | Docker, isolated per run *(planned)* |
@@ -107,7 +109,9 @@ status, and a **Sign in with GitHub** button. After signing in you land on
 `/repositories`, where you can connect the repositories this platform may read,
 then **Index** one — the progress shown is reported by the worker, not
 simulated. Indexing parses the repository and embeds every chunk; the row then
-shows real file, chunk and embedded counts.
+shows real file, chunk and embedded counts. Once a repository has embeddings, a
+search box appears: every result shows whether the vector side, the keyword
+side, or both found it, and what each scored it.
 <http://localhost:8000/docs> has the interactive API reference.
 
 Without `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` the rest of the
