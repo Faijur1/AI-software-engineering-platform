@@ -4,13 +4,21 @@ import uuid
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import Computed, Enum, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.dialects.postgresql import TSVECTOR
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.core.config import get_settings
 from app.core.database import Base
 from app.models.base import Timestamps, UUIDPrimaryKey
+
+# The column width is fixed at table-creation time, so it is read once here.
+# Changing EMBEDDING_DIMENSIONS therefore requires a migration, not just a
+# restart -- which is the honest constraint, since existing vectors would be
+# the wrong width anyway.
+EMBEDDING_DIMENSIONS = get_settings().embedding_dimensions
 
 if TYPE_CHECKING:
     from app.models.file import File
@@ -40,6 +48,17 @@ class CodeChunk(UUIDPrimaryKey, Timestamps, Base):
     __table_args__ = (
         Index("ix_chunks_content_tsv", "content_tsv", postgresql_using="gin"),
         Index("ix_chunks_repo_hash", "repository_id", "chunk_hash"),
+        # HNSW over IVFFlat: no training step, and it behaves well as rows are
+        # added incrementally, which is what per-repository indexing does.
+        # Cosine because the embeddings are normalised for similarity, not
+        # magnitude (docs/database.md).
+        Index(
+            "ix_chunks_embedding_hnsw",
+            "embedding",
+            postgresql_using="hnsw",
+            postgresql_with={"m": 16, "ef_construction": 64},
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        ),
     )
 
     file_id: Mapped[uuid.UUID] = mapped_column(
@@ -73,5 +92,14 @@ class CodeChunk(UUIDPrimaryKey, Timestamps, Base):
     content_tsv: Mapped[str] = mapped_column(
         TSVECTOR, Computed("to_tsvector('english', content)", persisted=True)
     )
+
+    # Nullable because a chunk exists as soon as it is parsed, and is embedded
+    # in a later phase. NULL therefore means "not embedded yet", which is
+    # exactly the work queue the embedding pass reads.
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(EMBEDDING_DIMENSIONS))
+    # Which model produced the vector. Stored per row, not assumed globally: a
+    # vector is only comparable to others from the same model, so changing the
+    # model must invalidate the old vectors rather than silently mixing them.
+    embedding_model: Mapped[str | None] = mapped_column(String(64))
 
     file: Mapped[File] = relationship(back_populates="chunks")

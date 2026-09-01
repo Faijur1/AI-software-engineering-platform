@@ -21,9 +21,10 @@ backend/
 │   ├── schemas/                Pydantic request/response models
 │   ├── routes/                 HTTP layer only — no business logic
 │   ├── services/               business logic (github.py, users.py)
-│   ├── ingestion/              languages, filters, fetcher, discovery, chunker, service
+│   ├── ingestion/              languages, filters, fetcher, discovery, chunker,
+│   │                           embedder, service
 │   ├── rag/                    (planned) retrievers, merge, rerank, context
-│   ├── llm/                    (planned) LLMProvider + implementations
+│   ├── llm/                    EmbeddingProvider + Ollama implementation
 │   ├── agent/                  (planned) engine, state, tools/
 │   ├── sandbox/                (planned) Docker runner
 │   ├── queue/                  queue interface + RQ backend (ADR-003)
@@ -206,3 +207,27 @@ transaction is still open.
 
 `run_worker.py` selects `SimpleWorker` where `os.fork` is unavailable, which is
 what makes the worker run on Windows.
+
+### `llm/`
+
+`base.py` declares `EmbeddingProvider` as a Protocol carrying `model_name` and
+`dimensions` alongside `embed`. Both are part of the interface because both are
+recorded with every stored vector: an embedding is comparable only to others
+from the same model at the same width.
+
+`ollama.py` implements it. Its contract is strict on purpose — it must return
+exactly one vector per input at exactly the configured width, or raise. A short
+or ragged result would not raise on its own; it would misalign vectors with
+chunks and surface much later as unexplained bad retrieval.
+
+`check_available()` is called before a long indexing run so a model that was
+never pulled fails in seconds with the exact command to fix it, rather than
+after minutes of parsing.
+
+### `ingestion/embedder.py`
+
+Reads its work queue as a query (`embedding IS NULL OR embedding_model != …`)
+rather than holding a list, so a first index, a resumed run and a model change
+all fall out of one predicate. Batches are flushed as they complete, and the
+batch loop re-queries rather than paginating with an offset — each written
+batch leaves the pending set, so a fixed offset would skip rows.

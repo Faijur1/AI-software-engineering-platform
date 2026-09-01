@@ -24,7 +24,7 @@ planned. Documents describing later milestones mark unbuilt sections as
 | 1 | Walking skeleton: compose, config, logging, migrations, `/health`, UI | ✅ **Done — verified** |
 | 2 | GitHub OAuth + repository listing | ✅ **Done — verified** |
 | 3 | Ingestion: discovery, filtering, tree-sitter parsing, chunking | ✅ **Done — verified** |
-| 4 | Embeddings + pgvector storage, incremental re-indexing | ⬜ Not started |
+| 4 | Embeddings + pgvector storage, incremental re-indexing | ✅ **Done — verified** |
 | 5 | Hybrid retrieval (vector + full-text), merge, dedupe | ⬜ Not started |
 | 6 | Evaluation harness, labelled benchmark, Recall@K / Precision@K | ⬜ Not started |
 | 7 | Reranking + chat answers with citations | ⬜ Not started |
@@ -126,3 +126,46 @@ another's job.
 **Not built yet, by design:** embeddings and the `embedding` column arrive in
 milestone 4. Chunks are stored with their text and `content_tsv` only, so
 nothing here claims a working vector search.
+
+### Milestone 4 — what was verified
+
+Against the **real** embedding model, not only against fixtures:
+
+- A full index of a real repository embedded **457 of 457 chunks** (100%) with
+  `nomic-embed-text`, at 768 dimensions, written into pgvector and read back at
+  full width.
+- Semantic search over those vectors returns genuinely relevant code. "How are
+  GitHub access tokens encrypted before storage" ranks `encrypt_token` and the
+  `security.py` module docstring top; "how are source files split into chunks"
+  ranks `chunk_source` top; "what excludes secret files from indexing" ranks
+  `is_secret_path` top.
+- **Incremental re-indexing measured:** the first run took 149 s, re-running
+  with nothing changed took **8 s**, and all 457 vectors survived — unchanged
+  files keep their chunk rows, so their embeddings are never recomputed.
+- The live-model tests (`pytest -m llm`) assert the properties the schema
+  depends on: vector width matches `EMBEDDING_DIMENSIONS`, a batch returns
+  vectors in input order, and semantically related code embeds closer than
+  unrelated code.
+
+Also asserted with fixtures: a short or ragged response is rejected rather than
+misaligning vectors with chunks, a model of the wrong width fails with an
+actionable message, changing the model re-embeds everything, an outage partway
+leaves the pending chunks retryable, embedding one repository never touches
+another's chunks, and a cosine-ranked query returns the matching chunk first.
+
+- Quality gate: `ruff` clean, `mypy --strict` clean on 48 files, 166 tests
+  passing, `tsc --noEmit` clean, `eslint` clean, `next build` succeeding.
+
+#### An honest limitation found while verifying
+
+Vector search alone is **not** reliably good yet. The query "where is the OAuth
+callback handled" ranked the README and a sign-in button above
+`github_callback` in `routes/auth.py` — the exact function that handles it.
+
+This is the failure mode ADR-005 and [the hybrid retrieval design](rag.md#why-hybrid)
+predict: embeddings are weak on exact identifiers, where keyword search is
+strong. It is recorded here rather than left for a user to discover, and it is
+precisely what milestone 5 (hybrid retrieval) and milestone 6 (a labelled
+benchmark with Recall@K) exist to fix and to measure. **No retrieval-quality
+claim is being made at this milestone** — only that vectors are produced,
+stored, and searchable.

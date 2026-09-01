@@ -1,17 +1,17 @@
 # RAG architecture
 
-> **Status:** ingestion (this page's first section) is **built and verified**
-> as of milestone 3. Retrieval, reranking, the inspector and evaluation
+> **Status:** ingestion and embedding are **built and verified** as of
+> milestone 4. Retrieval, reranking, the inspector and evaluation
 > (milestones 5–8) are still design only, and are marked below.
 
-## Ingestion — implemented (milestone 3)
+## Ingestion — implemented (milestones 3–4)
 
 ```
 GitHub -> tarball snapshot -> discover files -> filter -> parse (tree-sitter)
-       -> chunk by logical unit -> attach metadata -> [embed -> pgvector]
+       -> chunk by logical unit -> attach metadata -> embed -> pgvector
 ```
 
-Everything up to and including chunking runs today; embedding is milestone 4.
+The whole pipeline runs today.
 
 The snapshot is fetched as a tarball rather than cloned, so the access token
 never enters a process argument list (ADR-010). Extraction rejects absolute
@@ -85,13 +85,43 @@ Malformed source never fails a run. tree-sitter is error-tolerant, and a file
 that still cannot be parsed falls back to size-based chunking — one broken file
 must not fail the index for an entire repository.
 
+### Embedding
+
+A **separate phase** from parsing, run in its own transaction after chunks are
+committed. That ordering is deliberate: embedding is the slow, network-bound
+part, and if Ollama is unavailable the parsed chunks should already be safe in
+the database rather than discarded.
+
+The work queue is a query, not a list: chunks whose `embedding` is NULL, or
+whose `embedding_model` is not the model now configured. That single predicate
+covers three cases with no extra bookkeeping — a first index, a previous run
+that failed partway, and a change of embedding model.
+
+`embedding_model` is stored **per row**, not assumed globally. A vector is only
+comparable to others produced by the same model at the same width, so changing
+the model must invalidate the old vectors rather than silently mixing two
+incompatible spaces — a failure that would show up as quietly degraded
+retrieval rather than as an error.
+
+Requests are batched (32 chunks by default). Measured against
+`nomic-embed-text`: ~109 ms per chunk batched, against ~700 ms one at a time.
+
+Two failure modes are checked on every response, because neither would raise on
+its own: a vector count that does not match the input count (which would pair
+vectors with the wrong chunks from that point on), and a vector width that does
+not match `EMBEDDING_DIMENSIONS` (which the database column fixes).
+
 ### Incremental re-indexing
 
-A file whose `content_hash` is unchanged is not re-parsed and its chunk rows
-are reused untouched. A changed file has its old chunks deleted before the new
-ones are written, and a file deleted from the repository is removed from the
-index — otherwise a deleted function lingers and gets cited as if it still
+A file whose `content_hash` is unchanged is not re-parsed, its chunk rows are
+reused untouched, and — because the rows survive — their **vectors survive too**
+and are not re-computed. A changed file has its old chunks deleted before the
+new ones are written, and a file deleted from the repository is removed from
+the index, otherwise a deleted function lingers and gets cited as if it still
 existed.
+
+Measured on a real repository of 457 chunks: a full index with embedding took
+**149 s**; re-indexing with nothing changed took **8 s**.
 
 ## Retrieval
 

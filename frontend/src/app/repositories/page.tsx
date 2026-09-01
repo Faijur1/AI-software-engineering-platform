@@ -91,6 +91,11 @@ export default async function RepositoriesPage({ searchParams }: PageProps) {
                     {repo.default_branch} · {formatStatus(repo.index_status)}
                     {repo.indexed_at && ` · ${formatWhen(repo.indexed_at)}`}
                   </p>
+                  {repo.chunk_count > 0 && (
+                    <p className="mt-0.5 text-xs text-black/40 dark:text-white/40">
+                      {formatIndexSize(repo)}
+                    </p>
+                  )}
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   <IndexButton
@@ -219,6 +224,20 @@ function parsePage(raw: string | undefined): number {
 
 function formatStatus(status: ConnectedRepository["index_status"]): string {
   return status === "not_indexed" ? "not indexed yet" : status.replace("_", " ");
+}
+
+/**
+ * Describe the index by its real counts.
+ *
+ * A partial embedding pass is stated rather than rounded away: it is the
+ * difference between a searchable index and one that silently misses results.
+ */
+function formatIndexSize(repo: ConnectedRepository): string {
+  const base = `${repo.file_count} files · ${repo.chunk_count} chunks`;
+  if (repo.embedded_chunks === repo.chunk_count) {
+    return `${base} · all embedded`;
+  }
+  return `${base} · ${repo.embedded_chunks} embedded`;
 }
 
 /** Render a timestamp the server produced, without inventing precision. */

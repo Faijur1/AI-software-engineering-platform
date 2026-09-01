@@ -6,13 +6,17 @@ to help with real software engineering tasks: answering questions about the
 code, investigating bugs, running tests safely in a sandbox, and proposing
 patches for human approval.
 
-> ### Current status: Stage 1, milestone 3 of 9 — repository ingestion
+> ### Current status: Stage 1, milestone 4 of 9 — embeddings
 >
-> Infrastructure, configuration, logging, migrations, health, the frontend
-> shell, GitHub OAuth, repository connection, and **ingestion — discovery,
-> filtering, tree-sitter parsing and chunking — are built and verified.**
-> Embeddings, retrieval, the LLM integration and the agent are not implemented
-> yet.
+> Infrastructure, GitHub OAuth, repository connection, ingestion (discovery,
+> filtering, tree-sitter parsing, chunking) and **embeddings into pgvector are
+> built and verified.** Hybrid retrieval, chat, the RAG inspector and the agent
+> are not implemented yet.
+>
+> Vectors are produced, stored and searchable. **No claim is made yet about
+> retrieval *quality*** — that is measured against a labelled benchmark in
+> milestone 6, and a known weakness is recorded in
+> [`docs/README.md`](docs/README.md).
 >
 > [`docs/README.md`](docs/README.md) tracks exactly what is built, what is
 > verified, and what remains. Nothing is described as working until it has
@@ -27,7 +31,8 @@ patches for human approval.
 | Database | PostgreSQL 16 + pgvector |
 | Queue | Redis + RQ (ADR-003) |
 | Parsing | tree-sitter, AST-aware chunking (ADR-002) |
-| LLM | Ollama — `qwen2.5-coder:7b`, `nomic-embed-text` *(planned)* |
+| Embeddings | Ollama — `nomic-embed-text`, 768-dim, pgvector + HNSW |
+| LLM | Ollama — `qwen2.5-coder:7b` *(planned)* |
 | Auth | GitHub OAuth, backend-owned; signed HttpOnly session cookie |
 | Sandbox | Docker, isolated per run *(planned)* |
 
@@ -39,8 +44,11 @@ Start with [`docs/hld.md`](docs/hld.md).
 - **Python 3.11** — pinned; see [deployment notes](docs/deployment.md) for why
 - **Node.js 20+**
 - **Docker Desktop**, running
-- **Ollama** with `qwen2.5-coder:7b` and `nomic-embed-text` pulled *(needed from
-  milestone 4)*
+- **Ollama** running, with `nomic-embed-text` pulled — required for indexing:
+  ```bash
+  ollama pull nomic-embed-text     # embeddings, needed now
+  ollama pull qwen2.5-coder:7b     # generation, needed from milestone 7
+  ```
 
 ## Setup
 
@@ -91,13 +99,16 @@ cd backend
 ```
 
 Without the worker running, indexing jobs queue and stay `queued`. Everything
-else works.
+else works. `GET /health` reports Ollama alongside Postgres and Redis, so a
+missing model shows up there rather than only when a job fails.
 
 Then open <http://localhost:3000>. The page shows live backend and dependency
 status, and a **Sign in with GitHub** button. After signing in you land on
 `/repositories`, where you can connect the repositories this platform may read,
 then **Index** one — the progress shown is reported by the worker, not
-simulated. <http://localhost:8000/docs> has the interactive API reference.
+simulated. Indexing parses the repository and embeds every chunk; the row then
+shows real file, chunk and embedded counts.
+<http://localhost:8000/docs> has the interactive API reference.
 
 Without `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` the rest of the
 application still runs; only sign-in is unavailable, and it says so rather than
@@ -137,6 +148,7 @@ See [`docs/security.md`](docs/security.md) for the full model.
 ./.venv/Scripts/python.exe -m mypy app            # types (strict)
 ./.venv/Scripts/python.exe -m pytest              # all tests
 ./.venv/Scripts/python.exe -m pytest -m "not integration"   # no services needed
+./.venv/Scripts/python.exe -m pytest -m llm                 # needs Ollama running
 ./.venv/Scripts/python.exe -m alembic check       # models vs migrations
 
 # Frontend — from frontend/

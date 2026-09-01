@@ -15,11 +15,13 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Query, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.core.deps import CurrentUser, DbSession, GitHubToken
 from app.core.errors import NotFoundError
 from app.core.logging import get_logger
+from app.models.chunk import CodeChunk
+from app.models.file import File
 from app.models.job import Job, JobStatus, JobType
 from app.models.repository import IndexStatus, Repository
 from app.queue import get_queue
@@ -84,14 +86,56 @@ def list_github_repositories(
 
 
 @router.get("", response_model=list[RepositoryResponse], summary="Connected repositories")
-def list_connected_repositories(user: CurrentUser, session: DbSession) -> list[Repository]:
-    return list(
+def list_connected_repositories(
+    user: CurrentUser, session: DbSession
+) -> list[RepositoryResponse]:
+    """List connected repositories with their real index counts.
+
+    Counts come from two grouped aggregates rather than a per-row query, so the
+    endpoint stays at three queries however many repositories are connected.
+    """
+    repositories = list(
         session.execute(
             select(Repository)
             .where(Repository.user_id == user.id)
             .order_by(Repository.created_at.desc())
         ).scalars()
     )
+    if not repositories:
+        return []
+
+    ids = [repo.id for repo in repositories]
+
+    files: dict[uuid.UUID, int] = {
+        repository_id: count
+        for repository_id, count in session.execute(
+            select(File.repository_id, func.count())
+            .where(File.repository_id.in_(ids))
+            .group_by(File.repository_id)
+        ).all()
+    }
+    chunks: dict[uuid.UUID, tuple[int, int]] = {
+        repository_id: (total, embedded)
+        for repository_id, total, embedded in session.execute(
+            select(
+                CodeChunk.repository_id,
+                func.count(),
+                func.count(CodeChunk.embedding),
+            )
+            .where(CodeChunk.repository_id.in_(ids))
+            .group_by(CodeChunk.repository_id)
+        ).all()
+    }
+
+    responses: list[RepositoryResponse] = []
+    for repo in repositories:
+        total, embedded = chunks.get(repo.id, (0, 0))
+        response = RepositoryResponse.model_validate(repo)
+        response.file_count = files.get(repo.id, 0)
+        response.chunk_count = total
+        response.embedded_chunks = embedded
+        responses.append(response)
+    return responses
 
 
 @router.post(

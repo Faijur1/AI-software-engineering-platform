@@ -16,6 +16,7 @@ from sqlalchemy import text
 from app.core.database import SessionFactory
 from app.core.logging import get_logger
 from app.core.redis_client import get_redis
+from app.llm.ollama import OllamaEmbedder
 from app.schemas.health import DependencyHealth, HealthResponse
 
 router = APIRouter(tags=["health"])
@@ -45,6 +46,16 @@ def _check_redis() -> None:
     get_redis().ping()
 
 
+def _check_ollama() -> None:
+    """Confirm the embedding model is reachable and pulled.
+
+    Reported because indexing genuinely cannot run without it. Checking that
+    the *model* is present, not merely that the server answers, is the useful
+    check: a running Ollama with no model pulled fails every job.
+    """
+    OllamaEmbedder().check_available()
+
+
 @router.get("/health", response_model=HealthResponse)
 def health(response: Response) -> HealthResponse:
     from app.core.config import get_settings
@@ -52,6 +63,7 @@ def health(response: Response) -> HealthResponse:
     dependencies = {
         "database": _timed(_check_database),
         "redis": _timed(_check_redis),
+        "ollama": _timed(_check_ollama),
     }
     healthy = all(dep.status == "ok" for dep in dependencies.values())
     if not healthy:

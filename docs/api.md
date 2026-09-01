@@ -54,10 +54,15 @@ reachable, **503** when any dependency is not. Never cached.
   "environment": "development",
   "dependencies": {
     "database": { "status": "ok", "latency_ms": 5.5, "error": null },
-    "redis":    { "status": "ok", "latency_ms": 1.2, "error": null }
+    "redis":    { "status": "ok", "latency_ms": 1.2, "error": null },
+    "ollama":   { "status": "ok", "latency_ms": 8.0, "error": null }
   }
 }
 ```
+
+`ollama` checks that the configured **embedding model is pulled**, not merely
+that the server answers — a running Ollama with no model fails every indexing
+job, so reporting it healthy would be misleading.
 
 When a dependency is down, `status` becomes `degraded` and that dependency
 reports `{"status": "unavailable", "error": "ConnectionError"}`. `error` is the
@@ -88,6 +93,12 @@ or the error envelope's `code`.
 | POST | `/repositories` | Connect one by `{owner, name}`; 201, idempotent |
 | DELETE | `/repositories/{id}` | Disconnect; 204 |
 | GET | `/repositories/github` | Live listing from GitHub, paginated |
+
+`GET /repositories` includes `file_count`, `chunk_count` and
+`embedded_chunks`, counted from the database. `embedded_chunks` below
+`chunk_count` means a partial embedding pass, and is reported as such rather
+than rounded up — it is the difference between a searchable index and one that
+silently misses results.
 
 `GET /repositories/github` returns `{items, page, per_page, has_next}`. There is
 no total: GitHub does not report one for this endpoint, and inventing one would

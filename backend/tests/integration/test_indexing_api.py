@@ -16,6 +16,8 @@ from fastapi.testclient import TestClient
 from sqlalchemy import delete, select
 
 from app.core.database import session_scope
+from app.models.chunk import ChunkKind, CodeChunk
+from app.models.file import File
 from app.models.job import Job, JobStatus
 from app.models.repository import IndexStatus, Repository
 from app.models.user import User
@@ -266,3 +268,50 @@ def test_index_status_starts_as_not_indexed(
     _connect(client)
 
     assert client.get("/repositories").json()[0]["index_status"] == IndexStatus.not_indexed
+
+
+def test_repository_listing_reports_real_index_counts(
+    client: TestClient, github: Callable[[int, str], None], enqueued: list[uuid.UUID]
+) -> None:
+    """Counts come from the database, so an empty index reports zero, not a guess."""
+    github(ALICE, "alice")
+    _sign_in(client)
+    repository_id = _connect(client)
+
+    listed = client.get("/repositories").json()[0]
+    assert listed["file_count"] == 0
+    assert listed["chunk_count"] == 0
+    assert listed["embedded_chunks"] == 0
+
+    # Write one file and two chunks, only one of them embedded.
+    with session_scope() as session:
+        source = File(
+            repository_id=uuid.UUID(repository_id),
+            path="a.py",
+            language="python",
+            content_hash="h" * 64,
+            commit_sha="c" * 40,
+            size_bytes=10,
+        )
+        session.add(source)
+        session.flush()
+        for index, vector in enumerate([[0.1] * 768, None]):
+            session.add(
+                CodeChunk(
+                    file_id=source.id,
+                    repository_id=uuid.UUID(repository_id),
+                    content=f"def f{index}(): pass",
+                    kind=ChunkKind.function,
+                    start_line=1,
+                    end_line=1,
+                    chunk_hash=f"{index}" * 64,
+                    embedding=vector,
+                    embedding_model="m" if vector else None,
+                )
+            )
+
+    listed = client.get("/repositories").json()[0]
+    assert listed["file_count"] == 1
+    assert listed["chunk_count"] == 2
+    # A partial embedding pass is reported as partial, not rounded up.
+    assert listed["embedded_chunks"] == 1

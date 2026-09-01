@@ -38,4 +38,9 @@ export interface ConnectedRepository {
   index_status: IndexStatus;
   indexed_at: string | null;
   created_at: string;
+  /** Counted server-side from the index, never estimated. */
+  file_count: number;
+  chunk_count: number;
+  /** Below chunk_count means a partial embedding pass, which is worth showing. */
+  embedded_chunks: number;
 }

@@ -65,6 +65,23 @@ class Settings(BaseSettings):
     # Fernet key used to encrypt GitHub access tokens at rest.
     token_encryption_key: SecretStr = SecretStr("")
 
+    # ---------- LLM / embeddings (milestone 4) ----------
+    ollama_base_url: str = "http://localhost:11434"
+    # Generation and embedding models are configured independently on purpose:
+    # they are swapped for different reasons and at different times.
+    llm_model: str = "qwen2.5-coder:7b"
+    embedding_model: str = "nomic-embed-text"
+    # Must match the model's real output size. The database column is fixed at
+    # this width, so a mismatch is a hard failure rather than a silent
+    # truncation -- see app/llm/ollama.py.
+    embedding_dimensions: int = 768
+    # Generous: the first request to Ollama loads the model, which took ~23s
+    # for nomic-embed-text on a cold start.
+    llm_timeout_seconds: int = 120
+    # Chunks per embedding request. Larger batches amortise the round trip;
+    # too large and one failure wastes more work and the request can time out.
+    embedding_batch_size: int = 32
+
     # ---------- URLs ----------
     # Where the browser is sent after a completed OAuth round trip, and the
     # origin allowed to make credentialed cross-site calls to this API.

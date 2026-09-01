@@ -11,6 +11,7 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 
+from app.core.config import get_settings
 from app.core.database import session_scope
 from app.core.errors import AppError
 from app.core.logging import bind_trace_id, get_logger, new_trace_id
@@ -47,7 +48,9 @@ def run_index_job(job_id: str) -> None:
 def _run(job_id: uuid.UUID) -> None:
     # Imported here rather than at module scope so that importing this module
     # -- which the API does not do -- is what pulls in tree-sitter.
+    from app.ingestion.embedder import embed_repository
     from app.ingestion.service import index_repository
+    from app.llm.ollama import OllamaEmbedder
 
     with session_scope() as session:
         job = session.get(Job, job_id)
@@ -80,7 +83,7 @@ def _run(job_id: uuid.UUID) -> None:
         job.stage = "starting"
         repository.index_status = IndexStatus.indexing
 
-    def on_progress(percent: int, stage: str) -> None:
+    def set_progress(percent: int, stage: str) -> None:
         # A separate short transaction per update, so progress is visible to
         # the polling UI while the long transaction below is still open.
         with session_scope() as progress_session:
@@ -89,6 +92,14 @@ def _run(job_id: uuid.UUID) -> None:
                 row.progress = percent
                 row.stage = stage
 
+    embedder = OllamaEmbedder()
+    # Checked before any parsing: a missing model should fail in seconds with
+    # an actionable message, not after minutes of work.
+    embedder.check_available()
+
+    # Parsing and embedding are separate transactions on purpose. If embedding
+    # fails, the parsed chunks stay committed and a re-run embeds only what is
+    # still missing, rather than re-parsing the whole repository.
     with session_scope() as session:
         result = index_repository(
             session,
@@ -97,9 +108,22 @@ def _run(job_id: uuid.UUID) -> None:
             name=name,
             ref=ref,
             token=token,
-            on_progress=on_progress,
+            on_progress=lambda pct, stage: set_progress(_parse_share(pct), stage),
+        )
+        commit_sha = result.commit_sha
+
+    with session_scope() as session:
+        embed_repository(
+            session,
+            embedder,
+            repository_id=repository_id,
+            batch_size=get_settings().embedding_batch_size,
+            on_progress=lambda done, total: set_progress(
+                _embed_share(done, total), f"embedding ({done}/{total})"
+            ),
         )
 
+    with session_scope() as session:
         job = session.get(Job, job_id)
         if job is not None:
             job.status = JobStatus.succeeded
@@ -110,7 +134,7 @@ def _run(job_id: uuid.UUID) -> None:
         repository = session.get(Repository, repository_id)
         if repository is not None:
             repository.index_status = IndexStatus.indexed
-            repository.current_commit = result.commit_sha
+            repository.current_commit = commit_sha
             repository.indexed_at = datetime.now(UTC)
 
 
@@ -139,3 +163,20 @@ def _record_failure(job_id: uuid.UUID, exc: Exception) -> None:
         # The database is unreachable. Nothing more can be done here, and
         # masking the original failure would be worse.
         logger.exception("index_job_failure_not_recorded", job_id=str(job_id))
+
+
+# Parsing occupies the first 60% of the reported progress and embedding the
+# rest. Rough on purpose: embedding dominates wall-clock time on a first index
+# but is skipped almost entirely on a re-index, so no fixed split is accurate
+# for both. It shows that work is advancing, which is all it claims to do.
+_PARSE_SHARE = 60
+
+
+def _parse_share(percent: int) -> int:
+    return int(percent * _PARSE_SHARE / 100)
+
+
+def _embed_share(done: int, total: int) -> int:
+    if total <= 0:
+        return _PARSE_SHARE
+    return _PARSE_SHARE + int((100 - _PARSE_SHARE) * done / total)

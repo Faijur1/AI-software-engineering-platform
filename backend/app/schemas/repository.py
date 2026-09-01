@@ -69,3 +69,11 @@ class RepositoryResponse(BaseModel):
     index_status: IndexStatus
     indexed_at: datetime | None = None
     created_at: datetime
+
+    # Counted from the database, never estimated. embedded_chunks below
+    # chunk_count means a partial embedding pass -- worth showing rather than
+    # rounding away, since it is the difference between a searchable index and
+    # one that silently misses results.
+    file_count: int = 0
+    chunk_count: int = 0
+    embedded_chunks: int = 0
