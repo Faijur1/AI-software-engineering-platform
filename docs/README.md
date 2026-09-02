@@ -603,3 +603,47 @@ error.
 
 - Quality gate: `ruff` clean, `mypy --strict` clean on 82 files, 336 tests
   passing, `tsc --noEmit` clean, `eslint` clean, `next build` succeeding.
+
+---
+
+## Maintenance: a broken endpoint found by a status check
+
+`GET /evaluations` was returning **500**. The RAG Inspector's evaluation panel
+had been dead since the agent benchmark landed, and nothing caught it.
+
+The cause was a shared directory. Both benchmarks save into `eval/results/`,
+and the endpoint took the newest file by name. `agent-` sorts after a bare
+timestamp, so the "latest report" became an agent baseline, and reading
+retrieval configurations out of it raised.
+
+Two things were wrong, and both are fixed:
+
+- **Selection ignored what a report was.** It now checks each candidate for the
+  shape a response requires and skips anything else, newest usable first. New
+  reports also carry an explicit `kind`, but selection is by shape rather than
+  by that marker or by filename — reports written before the marker existed are
+  still valid, and a naming rule would have to special-case them.
+- **One bad file hid every good one.** Taking only the newest meant a single
+  unreadable or unexpected report masked all earlier valid ones. The scan now
+  continues past them.
+
+If only agent baselines exist, the endpoint says no retrieval run has happened
+rather than serving another benchmark's numbers. Agent baselines remain
+CLI-and-file only; no endpoint exposes them yet.
+
+Two process points, both more interesting than the bug:
+
+**The tests could not have caught it.** They wrote `{"commit": "new"}` as a
+stand-in report — enough to prove newest-wins, but it shares none of the
+structure the endpoint actually reads, so no fixture resembled a real pair of
+files in one directory. The fixture now has the shape the code requires.
+
+**Tests were excluded from the type gate.** Every milestone reported
+`mypy --strict` clean, over `app` and `eval` only. Adding `tests` surfaced two
+helpers returning `Any` from annotated signatures. Test code asserts what the
+system promises, so an unchecked assertion is a weaker guarantee than it looks;
+the gate is now configured in `pyproject.toml` and covers all three, so a bare
+`mypy` checks everything.
+
+- Quality gate: `ruff` clean, `mypy --strict` clean on **119 files** (was 82;
+  tests now included), 345 tests passing, `tsc --noEmit` clean, `eslint` clean.

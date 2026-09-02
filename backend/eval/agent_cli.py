@@ -142,6 +142,9 @@ def main() -> int:
         stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
         path = RESULTS_DIR / f"agent-{stamp}.json"
         payload = baseline.to_dict()
+        # Marked so the API never mistakes an agent baseline for a retrieval
+        # report; they share a directory.
+        payload["kind"] = "agent"
         payload["generated_at"] = datetime.now(UTC).isoformat()
         path.write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")
         print(f"\nSaved {path.name}")

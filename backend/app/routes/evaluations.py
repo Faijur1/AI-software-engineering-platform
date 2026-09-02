@@ -73,18 +73,50 @@ def latest_evaluation(user: CurrentUser) -> EvaluationReportResponse:
 
 
 def _load_latest() -> dict[str, Any] | None:
-    """Read the newest report file, or None if there are none."""
+    """Read the newest *retrieval* report, or None if there is none.
+
+    The directory holds more than one kind of report: the agent benchmark
+    writes here too. Selecting purely by filename order returned an agent
+    baseline to a caller expecting retrieval configurations, and the endpoint
+    answered 500. So each candidate is checked for the shape it must have, and
+    anything else is skipped rather than coerced.
+
+    Newest first, and the first readable match wins -- one unreadable or
+    unexpected file must not hide every earlier valid one.
+    """
     if not RESULTS_DIR.is_dir():
         return None
-    reports = sorted(RESULTS_DIR.glob("*.json"))
-    if not reports:
-        return None
 
-    try:
-        loaded: dict[str, Any] = json.loads(reports[-1].read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        # A truncated report is worse than none: reporting partial numbers as
-        # if they were a result is exactly what this project refuses to do.
-        logger.warning("evaluation_report_unreadable", path=reports[-1].name)
-        return None
-    return loaded
+    for path in sorted(RESULTS_DIR.glob("*.json"), reverse=True):
+        try:
+            loaded: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            # A truncated report is worse than none: reporting partial numbers
+            # as if they were a result is what this project refuses to do.
+            logger.warning("evaluation_report_unreadable", path=path.name)
+            continue
+
+        if _is_retrieval_report(loaded):
+            return loaded
+        logger.debug("evaluation_report_skipped", path=path.name)
+
+    return None
+
+
+def _is_retrieval_report(payload: dict[str, Any]) -> bool:
+    """Whether ``payload`` is a retrieval benchmark report.
+
+    Checked by shape rather than by filename. Reports written before the agent
+    benchmark existed carry no kind marker, so a name-based rule would have to
+    special-case them; the fields a response actually needs are the honest
+    test.
+    """
+    if payload.get("kind") == "agent":
+        return False
+    configurations = payload.get("configurations")
+    if not isinstance(configurations, dict) or not configurations:
+        return False
+    return all(
+        isinstance(entry, dict) and "recall" in entry and "precision" in entry
+        for entry in configurations.values()
+    )

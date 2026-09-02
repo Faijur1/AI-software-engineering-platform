@@ -56,6 +56,10 @@ select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
 python_version = "3.11"
 strict = true
 plugins = ["pydantic.mypy"]
+# Tests are checked too. They had been left out, and drifted: two helpers were
+# returning Any from annotated signatures. Test code asserts what the system
+# promises, so an unchecked assertion is a weaker guarantee than it appears.
+files = ["app", "eval", "tests"]
 # Third-party packages without bundled type stubs.
 [[tool.mypy.overrides]]
 module = ["redis.*", "rq.*", "tree_sitter_language_pack.*"]

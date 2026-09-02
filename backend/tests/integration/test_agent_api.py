@@ -348,9 +348,10 @@ def test_a_guessed_trace_id_discloses_nothing(
 
 
 def _propose(client: TestClient, run_id: str, diff: str = DIFF) -> httpx.Response:
-    return client.post(
+    response: httpx.Response = client.post(
         "/patches", json={"agent_run_id": run_id, "diff": diff, "validate_in_sandbox": False}
     )
+    return response
 
 
 def _start_run(client: TestClient, repository_id: str) -> str:

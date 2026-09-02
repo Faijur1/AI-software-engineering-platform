@@ -123,7 +123,10 @@ def main() -> int:
         print(f"      expected : {', '.join(question.expected)}")
         print(f"      got      : {', '.join(question.retrieved[:3]) or '(nothing)'}")
 
-    payload: dict[str, object] = {"reports": [r.to_dict() for r in reports]}
+    payload: dict[str, object] = {
+        "kind": "retrieval",
+        "reports": [r.to_dict() for r in reports],
+    }
     payload["generated_at"] = datetime.now(UTC).isoformat()
 
     if args.json:
