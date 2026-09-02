@@ -825,10 +825,14 @@ request URL in its own exception messages, so a key in a query string would
 reach the structured logs the first time a request timed out. Verified live
 against a real call and a real failure; the key appears nowhere in the output.
 
-**Not yet built: per-repository opt-in.** ADR-013 recommended letting each
-repository choose whether its content may leave the machine. What exists is one
-global switch, so enabling Gemini sends retrieved repository content to Google
-for every repository.
+**Per-repository opt-in is built.** ADR-013 recommended letting each repository
+choose whether its content may leave the machine, and it now does:
+`allow_cloud_llm` defaults to deny, one owner-scoped endpoint grants it, and the
+resolution function takes the permission as an argument instead of reading
+configuration. Verified live in both directions on the same question — denied,
+answered by `qwen2.5-coder:3b` with the downgrade stated in the response;
+granted, answered by `gemini-3.5-flash` at 1.0 coverage. See
+`docs/security.md`.
 
 ---
 

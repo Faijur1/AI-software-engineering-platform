@@ -184,12 +184,13 @@ itself. It is kept for that, and an uncontaminated control was added beside it.
 
 ### What is not decided here
 
-**Per-repository opt-in is not built.** The recommended option included letting
-each repository choose whether its content may leave the machine; what exists is
-a single global setting. Until that lands, enabling Gemini sends retrieved
-repository content to Google for **every** repository, which is a decision the
-operator makes once rather than per project. `docs/security.md` should be read
-alongside this.
+**Per-repository opt-in is now built.** `repositories.allow_cloud_llm` defaults
+to deny, `PATCH /repositories/{id}/settings` is the only way to grant it, and
+`resolve_chat_provider` takes the permission as an argument rather than reading
+configuration for it — so no caller can reach a remote provider without having
+supplied a repository's answer. A denied repository is answered by the local
+model with the downgrade stated in the response, rather than refused. See
+`docs/security.md`.
 
 **Cost and quota are unresolved.** The free tier is **20 requests per day, per
 project, per model** — not per minute, and not per key. Verified by rotating the

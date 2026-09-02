@@ -196,6 +196,7 @@ def run_agent(
     workspace: Path | None = None,
     granted: frozenset[Permission] = frozenset({Permission.repo_read}),
     complete: Any = None,
+    provider: Any = None,
 ) -> AgentOutcome:
     """Execute one bounded investigation.
 
@@ -203,8 +204,12 @@ def run_agent(
     tested end to end against a scripted model rather than only against a live
     one -- the loop's behaviour under a *bad* model is the part most worth
     testing, and that is hard to provoke on demand from a real one.
+
+    ``provider`` selects which model answers. The caller resolves it, because
+    the answer depends on whether *this repository* has been opted in to a
+    cloud provider, and the loop has no business reading that permission itself.
     """
-    generate = complete or _default_generate()
+    generate = complete or _default_generate(provider)
     tracer = Tracer(session=session, trace_id=agent_run.trace_id)
     context = ToolContext(
         session=session,
@@ -400,7 +405,7 @@ def _record_tool(
     session.flush()
 
 
-def _default_generate() -> Any:
+def _default_generate(provider: Any = None) -> Any:
     """Adapt the chat client to the loop's plain text-in/text-out shape.
 
     Temperature 0: an agent that takes a different path on every run cannot be
@@ -411,7 +416,9 @@ def _default_generate() -> Any:
     def generate(prompt: str) -> str:
         from app.llm.chat import complete as chat_complete
 
-        completion = chat_complete(system=SYSTEM_PROMPT, user=prompt, temperature=0.0)
+        completion = chat_complete(
+            system=SYSTEM_PROMPT, user=prompt, temperature=0.0, provider=provider
+        )
         return str(completion.answer)
 
     return generate

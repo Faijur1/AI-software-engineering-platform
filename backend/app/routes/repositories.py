@@ -13,6 +13,7 @@ identifier supplied by the client.
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Query, status
 from sqlalchemy import func, select
@@ -31,6 +32,7 @@ from app.schemas.repository import (
     GitHubRepositoryPage,
     GitHubRepositoryResponse,
     RepositoryResponse,
+    RepositorySettingsRequest,
 )
 from app.services import github
 
@@ -271,3 +273,63 @@ def disconnect_repository(repository_id: uuid.UUID, user: CurrentUser, session: 
     repository is indistinguishable from one that does not exist (404, not 403).
     """
     session.delete(_owned_repository(session, repository_id, user.id))
+
+
+@router.patch(
+    "/{repository_id}/settings",
+    response_model=RepositoryResponse,
+    summary="Change a repository's settings",
+)
+def update_repository_settings(
+    repository_id: uuid.UUID,
+    payload: RepositorySettingsRequest,
+    user: CurrentUser,
+    session: DbSession,
+) -> RepositoryResponse:
+    """Grant or withdraw permission to send this repository to a cloud model.
+
+    Owner-scoped through ``_owned_repository``, so another user's repository is
+    reported as absent rather than forbidden.
+
+    The grant is explicit and per repository. Enabling a cloud provider in
+    configuration does not opt any repository in, and connecting a repository
+    later does not inherit anyone's earlier decision -- answering a question
+    sends retrieved source code to whoever generates the answer, which is a
+    disclosure about *this* repository.
+
+    Withdrawal takes effect on the next question. It cannot recall what was
+    already sent, and the response says so rather than implying otherwise.
+    """
+    repository = _owned_repository(session, repository_id, user.id)
+
+    was_allowed = repository.allow_cloud_llm
+    repository.allow_cloud_llm = payload.allow_cloud_llm
+    if payload.allow_cloud_llm:
+        # Refreshed only on a real transition, so the timestamp answers "when
+        # was this granted" rather than "when was it last confirmed".
+        if not was_allowed:
+            repository.cloud_llm_allowed_at = datetime.now(UTC)
+    else:
+        repository.cloud_llm_allowed_at = None
+    session.flush()
+
+    if was_allowed != payload.allow_cloud_llm:
+        logger.info(
+            "repository_cloud_permission_changed",
+            repository=repository.full_name,
+            allow_cloud_llm=payload.allow_cloud_llm,
+        )
+
+    # Counts included so the client can render the row without a second call.
+    total, embedded = session.execute(
+        select(func.count(), func.count(CodeChunk.embedding)).where(
+            CodeChunk.repository_id == repository.id
+        )
+    ).one()
+    response = RepositoryResponse.model_validate(repository)
+    response.file_count = session.execute(
+        select(func.count()).select_from(File).where(File.repository_id == repository.id)
+    ).scalar_one()
+    response.chunk_count = total
+    response.embedded_chunks = embedded
+    return response

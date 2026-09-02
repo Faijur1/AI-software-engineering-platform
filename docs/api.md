@@ -118,6 +118,13 @@ same reason, so the status maps straight through.
 | POST | `/repositories/{id}/index` | Queue indexing; **202** with a job |
 | GET | `/jobs/{id}` | Job status and progress |
 
+`PATCH /repositories/{id}/settings` is the only way to grant or withdraw
+permission for a repository's code to be sent to a cloud model provider. Owner
+scoped, and a non-owner gets 404 rather than 403 so existence is not disclosed.
+The grant is never implied: connecting a repository, or enabling a provider in
+configuration, leaves every repository denied. Withdrawal takes effect on the
+next question and cannot recall what was already sent.
+
 `POST /repositories/{id}/index` returns **202 Accepted**, never 200: the work
 has been accepted, not performed. Indexing runs for minutes in a background
 worker, so no HTTP request waits for it.

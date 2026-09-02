@@ -18,6 +18,7 @@ from app.core.errors import NotFoundError, ValidationError
 from app.core.logging import get_logger
 from app.llm.chat import answer_question
 from app.llm.ollama import OllamaEmbedder
+from app.llm.providers import resolve_chat_provider
 from app.models.chunk import CodeChunk
 from app.models.repository import Repository
 from app.rag.citations import check_citations
@@ -94,7 +95,11 @@ def chat(payload: ChatRequest, user: CurrentUser, session: DbSession) -> ChatRes
         )
 
     context = build_context(result.chunks)
-    completion = answer_question(payload.question, context.prompt_context)
+    # The repository decides who may see its code, not the configuration.
+    choice = resolve_chat_provider(allow_cloud=repository.allow_cloud_llm)
+    completion = answer_question(
+        payload.question, context.prompt_context, provider=choice.provider
+    )
     citations = check_citations(completion.answer, context.sources)
 
     logger.info(
@@ -107,6 +112,10 @@ def chat(payload: ChatRequest, user: CurrentUser, session: DbSession) -> ChatRes
     )
 
     notes = list(result.trace.notes)
+    if choice.note:
+        # Said plainly. A downgraded answer that looks like a normal one
+        # teaches the user the wrong lesson about the system's ability.
+        notes.append(choice.note)
     if context.dropped_for_budget:
         notes.append(
             f"{context.dropped_for_budget} retrieved chunk(s) did not fit the "

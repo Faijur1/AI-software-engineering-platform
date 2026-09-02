@@ -17,11 +17,11 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 
-from app.core.config import get_settings
 from app.core.database import session_scope
 from app.core.errors import AppError
 from app.core.logging import bind_trace_id, get_logger
 from app.core.security import decrypt_token
+from app.llm.providers import resolve_chat_provider
 from app.models.agent import AgentRun, AgentStatus
 from app.models.repository import Repository
 from app.models.user import User
@@ -77,10 +77,25 @@ def _run(run_id: uuid.UUID, *, allow_tests: bool) -> None:
         # can retrieve. Falling back to the branch head would let the two drift.
         ref = repository.current_commit or repository.default_branch
         repository_id = repository.id
+        # Read inside the session, carried out as a plain bool: the agent runs
+        # against a snapshot outside this transaction, and re-reading the row
+        # later would risk acting on a permission that changed mid-run.
+        allow_cloud = repository.allow_cloud_llm
+
+        choice = resolve_chat_provider(allow_cloud=allow_cloud)
 
         run.status = AgentStatus.running
         run.started_at = datetime.now(UTC)
-        run.model = get_settings().llm_model
+        # The model that actually answers, not the Ollama setting. Recording
+        # settings.llm_model here would label a Gemini run with the local
+        # model's name, which is what the eval baseline used to do.
+        run.model = choice.provider.model_name
+        if choice.downgraded:
+            logger.info(
+                "agent_provider_downgraded",
+                repository=repository.full_name,
+                reason="repository_not_opted_in",
+            )
 
     granted = {Permission.repo_read}
     if allow_tests:
@@ -95,6 +110,7 @@ def _run(run_id: uuid.UUID, *, allow_tests: bool) -> None:
             repository_id=repository_id,
             workspace=snapshot.root,
             granted=frozenset(granted),
+            provider=choice.provider,
         )
 
         run.status = outcome.status

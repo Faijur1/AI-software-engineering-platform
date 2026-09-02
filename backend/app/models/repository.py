@@ -49,6 +49,23 @@ class Repository(UUIDPrimaryKey, Timestamps, Base):
     )
     indexed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
+    # Whether this repository's content may be sent to a cloud model provider.
+    #
+    # Default deny, and deliberately per repository rather than global. Answering
+    # a question sends retrieved source code to whoever generates the answer, so
+    # "which model answers" is a disclosure decision about this repository's
+    # contents, not a preference. A single global switch would silently include
+    # every repository connected afterwards -- including a private one connected
+    # months later by someone who never saw the choice.
+    #
+    # Nothing migrates to allowed. Existing rows default to deny, so enabling a
+    # cloud provider cannot retroactively opt in repositories that were indexed
+    # when no such provider existed.
+    allow_cloud_llm: Mapped[bool] = mapped_column(default=False, nullable=False)
+    # When the owner last granted it, so consent is auditable rather than merely
+    # current. Cleared when permission is withdrawn.
+    cloud_llm_allowed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
     user: Mapped[User] = relationship(back_populates="repositories")
 
     @property

@@ -103,3 +103,48 @@ during ingestion and are never embedded or shown to the LLM.
 2. No GitHub write happens without explicit human approval.
 3. No secret is ever committed, logged, or placed in a `NEXT_PUBLIC_` variable.
 4. A prompt instruction is never the sole control preventing a dangerous action.
+
+## Sending repository content to a cloud model
+
+Answering a question sends retrieved source code to whatever generates the
+answer. When that is a hosted API, the code leaves this machine. So "which model
+answers" is a disclosure decision about a repository's contents, not a
+preference, and it is made per repository.
+
+**Default deny.** `repositories.allow_cloud_llm` defaults to false, and the
+migration that added it gives every existing row false explicitly. A repository
+indexed before any cloud provider existed was never offered the choice, so it
+cannot be treated as having made one. Connecting a repository does not imply
+consent, and neither does enabling a provider in configuration.
+
+**Configuration and consent must both agree, and only one of them can say no.**
+`LLM_PROVIDER` says which cloud provider is *available*; the repository row says
+whether it may be *used*. `resolve_chat_provider` takes the permission as an
+argument rather than reading configuration for it, so a caller cannot reach a
+remote provider without having supplied a repository's answer.
+
+**A denied repository is answered locally, not refused.** Refusing would make it
+unusable until someone changed a setting, which pressures people into granting
+permission to get their tool working — consent extracted by obstruction. The
+local model always works and discloses nothing, so it is the fallback, and the
+downgrade is stated in the response rather than hidden: a worse answer for an
+invisible reason teaches the user that the system is bad at this, which is the
+wrong lesson.
+
+**One route in.** `PATCH /repositories/{id}/settings`, owner-scoped, with the
+grant timestamped so consent is auditable rather than merely current. The
+connect endpoint ignores the field, so there is a single place to audit.
+
+### What this does not do
+
+It does not recall anything already sent. Withdrawal applies to the next
+question only.
+
+It does not cover the embedding provider, which is deliberate but worth stating:
+embeddings run locally on Ollama for every repository regardless of this flag,
+so no code reaches a hosted embedding API today. If a hosted embedder is ever
+added, it needs the same gate, and vectors are only comparable within one model
+so that change means re-embedding rather than a config switch.
+
+It does not tell you what a provider does with the content once sent. That is
+the provider's policy, not something this system can enforce.

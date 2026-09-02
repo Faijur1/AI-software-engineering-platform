@@ -70,6 +70,13 @@ class RepositoryResponse(BaseModel):
     indexed_at: datetime | None = None
     created_at: datetime
 
+    # Whether this repository's retrieved code may be sent to a cloud model.
+    # Returned on every repository so a client can show the state without
+    # asking for it, because a user should not have to go looking to find out
+    # where their code is going.
+    allow_cloud_llm: bool = False
+    cloud_llm_allowed_at: datetime | None = None
+
     # Counted from the database, never estimated. embedded_chunks below
     # chunk_count means a partial embedding pass -- worth showing rather than
     # rounding away, since it is the difference between a searchable index and
@@ -77,3 +84,21 @@ class RepositoryResponse(BaseModel):
     file_count: int = 0
     chunk_count: int = 0
     embedded_chunks: int = 0
+
+
+class RepositorySettingsRequest(BaseModel):
+    """A change to one repository's settings.
+
+    Only the cloud-model permission for now. A dedicated request model rather
+    than a partial ``RepositoryResponse``: the fields a client may change are a
+    much smaller set than the fields it may read, and conflating them is how
+    ``index_status`` ends up writable.
+    """
+
+    allow_cloud_llm: bool = Field(
+        description=(
+            "Whether retrieved code from this repository may be sent to the "
+            "configured cloud model provider. Defaults to false and is never "
+            "set implicitly."
+        )
+    )

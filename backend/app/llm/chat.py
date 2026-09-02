@@ -54,6 +54,7 @@ def answer_question(
     question: str,
     prompt_context: str,
     *,
+    provider: ChatProvider | None = None,
     model: str | None = None,
     temperature: float = 0.1,
 ) -> ChatCompletion:
@@ -71,6 +72,7 @@ def answer_question(
         ),
         model=model,
         temperature=temperature,
+        provider=provider,
     )
 
 
