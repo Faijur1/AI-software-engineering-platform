@@ -35,15 +35,40 @@ which would force source builds. The backend venv is created with `py -3.11`.
 comes from the environment through one validated settings object. In production,
 API docs are disabled and logs are JSON.
 
-## CI (planned)
+## CI
 
-```
-lint (ruff, eslint) -> typecheck (mypy --strict, tsc) -> unit tests
-  -> integration tests (compose services) -> alembic check -> build
-```
+`.github/workflows/ci.yml`, on pull requests and on pushes to `main`. Three
+jobs run in parallel; within a job the steps are ordered cheapest-first, so an
+obvious failure is reported in seconds rather than after the slow tiers.
+
+| Job | Steps |
+| --- | --- |
+| Backend | `ruff` -> `mypy` -> unit tests -> `alembic upgrade head` -> `alembic check` -> integration tests |
+| Sandbox | build `aisep-sandbox:latest` -> tests marked `sandbox` |
+| Frontend | `eslint` -> `tsc --noEmit` -> `next build` |
 
 `alembic check` is in the pipeline specifically to fail the build when models
-drift from migrations.
+drift from migrations -- a divergence no test can see, which otherwise surfaces
+in production as a missing column.
+
+The backend job runs Postgres and Redis as service containers, using the same
+images as `docker-compose.yml`. `pgvector/pgvector:pg16` rather than plain
+`postgres`: the extension is not in the stock image, and the first migration
+would fail without it.
+
+The sandbox job builds the image rather than pulling one. ADR-006 makes the
+sandbox a security boundary, and its tests assert that the network is
+unreachable and the host filesystem invisible, so they need the real image --
+the base has no pytest, and `--network none` means it could never be installed
+at run time.
+
+CI holds no credentials. The suite supplies its own obviously-fake secrets
+through an autouse fixture, so the workflow sets only the service URLs, and no
+step ever reaches a live account.
+
+Tests marked `llm` are excluded: they need a running Ollama with models pulled,
+which is a developer-machine dependency rather than a CI one. That gap is real
+and worth stating -- nothing in CI exercises a live model.
 
 ## Stage 3 cloud target (planned)
 

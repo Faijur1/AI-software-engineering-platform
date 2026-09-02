@@ -1,0 +1,161 @@
+name: CI
+
+# Two triggers, deliberately. Pull requests gate what merges; pushes to main
+# catch anything that reached the branch another way, which on this repository
+# is the normal path rather than the exception.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# A superseded run tells you about code nobody is looking at any more.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Where the service containers listen. The test suite supplies its own
+  # obviously-fake secrets through an autouse fixture, so none are set here;
+  # CI never holds a credential and never touches a live account.
+  APP_ENV: test
+  DATABASE_URL: postgresql+psycopg://app:app@localhost:5432/aisep
+  REDIS_URL: redis://localhost:6379/0
+
+jobs:
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      # The same images docker-compose.yml uses. pgvector matters: the plain
+      # postgres image has no vector extension, and the migration that creates
+      # it would fail.
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: app
+          POSTGRES_PASSWORD: app
+          POSTGRES_DB: aisep
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U app -d aisep"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Install
+        run: pip install -e ".[dev]"
+
+      # Ordered cheapest-first, so an obvious failure is reported in seconds
+      # rather than after the integration tier has run.
+      - name: Lint
+        run: ruff check .
+
+      - name: Typecheck
+        # Scope comes from pyproject.toml and covers app, eval and tests.
+        run: mypy
+
+      - name: Unit tests
+        run: pytest -q -m "not integration and not sandbox and not llm"
+
+      - name: Migrate
+        run: alembic upgrade head
+
+      # The reason this step exists: it fails when the models and the
+      # migrations disagree, which is a drift that unit tests cannot see and
+      # that only surfaces in production as a missing column.
+      - name: Check migrations match the models
+        run: alembic check
+
+      - name: Integration tests
+        run: pytest -q -m integration
+
+  sandbox:
+    name: Sandbox
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Install
+        run: pip install -e ".[dev]"
+
+      # ADR-006 makes the sandbox a security boundary, so its tests assert
+      # things like "the network is unreachable" and "the host filesystem is
+      # not visible". Those are exactly the assertions worth running on every
+      # change, and they need the real image: the base has no pytest, and
+      # --network none means it could never be installed at run time.
+      - name: Build the sandbox image
+        # From the repository root, where the Dockerfile lives -- the same
+        # command app/sandbox/runner.py names when the image is missing.
+        working-directory: .
+        run: docker build -f docker/sandbox.Dockerfile -t aisep-sandbox:latest .
+
+      - name: Sandbox tests
+        run: pytest -q -m sandbox
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npx eslint .
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Build
+        # The build is the only step that exercises the server components and
+        # the route tree as a whole.
+        run: npm run build
+        env:
+          NEXT_PUBLIC_BACKEND_URL: http://localhost:8000
