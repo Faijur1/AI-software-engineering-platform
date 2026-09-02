@@ -1,0 +1,15 @@
+# Default: let git normalise text in the repository and check it out natively.
+* text=auto
+
+# Shell scripts must keep LF wherever they are checked out. These are copied
+# into the sandbox image and run by a Linux shell: a CRLF shebang makes the
+# interpreter "/bin/sh\r", which does not exist, and the container fails with a
+# "not found" naming a file that is plainly there. Git's own warning on a
+# Windows working copy is the mechanism -- a fresh clone would build a broken
+# image while the repository itself stayed correct.
+*.sh text eol=lf
+docker/sandbox-entrypoint.sh text eol=lf
+
+# The Dockerfile is read by the daemon rather than a shell, but keeping it LF
+# avoids the same class of surprise in any RUN line that spans lines.
+*.Dockerfile text eol=lf
