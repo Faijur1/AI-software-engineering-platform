@@ -58,9 +58,9 @@ jobs:
         working-directory: backend
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
           cache: pip
@@ -79,7 +79,17 @@ jobs:
         run: mypy
 
       - name: Unit tests
-        run: pytest -q -m "not integration and not sandbox and not llm"
+        run: >-
+          pytest -q -m "not integration and not sandbox and not llm"
+          --junitxml=unit-report.xml
+
+      # A failed step otherwise reports only "Process completed with exit code
+      # 1". Annotations are public run metadata, so the failing test names are
+      # readable from the summary and the API without a token -- which matters
+      # when the log is the only copy and reading it needs credentials.
+      - name: Report which tests failed
+        if: failure()
+        run: python scripts/annotate_failures.py unit-report.xml
 
       - name: Migrate
         run: alembic upgrade head
@@ -95,7 +105,15 @@ jobs:
         # file marks integration, the test itself marks llm -- is selected by
         # a bare "-m integration", so the model tier would leak into a job that
         # has no model.
-        run: pytest -q -m "integration and not llm"
+        run: pytest -q -m "integration and not llm" --junitxml=integration-report.xml
+
+      # A failed step otherwise reports only "Process completed with exit code
+      # 1". Annotations are public run metadata, so the failing test names are
+      # readable from the summary and the API without a token -- which matters
+      # when the log is the only copy and reading it needs credentials.
+      - name: Report which tests failed
+        if: failure()
+        run: python scripts/annotate_failures.py integration-report.xml
 
   sandbox:
     name: Sandbox
@@ -106,9 +124,9 @@ jobs:
         working-directory: backend
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
           cache: pip
@@ -129,7 +147,15 @@ jobs:
         run: docker build -f docker/sandbox.Dockerfile -t aisep-sandbox:latest .
 
       - name: Sandbox tests
-        run: pytest -q -m sandbox
+        run: pytest -q -m sandbox --junitxml=sandbox-report.xml
+
+      # A failed step otherwise reports only "Process completed with exit code
+      # 1". Annotations are public run metadata, so the failing test names are
+      # readable from the summary and the API without a token -- which matters
+      # when the log is the only copy and reading it needs credentials.
+      - name: Report which tests failed
+        if: failure()
+        run: python scripts/annotate_failures.py sandbox-report.xml
 
   frontend:
     name: Frontend
@@ -140,9 +166,9 @@ jobs:
         working-directory: frontend
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: "22"
           cache: npm
