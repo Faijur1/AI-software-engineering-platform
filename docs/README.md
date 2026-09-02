@@ -412,6 +412,12 @@ confirmatory run:
 | hybrid | 0.321 | 0.750 | 0.786 | 0.661 |
 | **hybrid + role weighting** | **0.571** | **0.821** | **0.821** | **0.774** |
 
+> Measured at milestone 7 on a 1008-chunk corpus. Re-measured at commit
+> `b2150d0` the same configuration scores **R@5 0.786, MRR 0.702** — the corpus
+> has since grown to 1323 chunks, mostly documentation. See "Re-measured
+> retrieval" at the end of this file; the gain from role weighting is undimmed,
+> the absolute numbers are not.
+
 It is the bigger of the two effects. Hybrid over vector-only gained +0.143 R@5
 and nothing on MRR; role weighting added a further +0.071 R@5 and **+0.113
 MRR** on top, for the cost of a dictionary lookup.
@@ -876,3 +882,71 @@ scores perfectly. Three answers verified by hand is evidence, not a metric, and
 `n=3` on one run at that. Judging groundedness automatically needs a judge, and
 an unvalidated judge would be a number with nothing behind it — so it stays
 unimplemented and unclaimed, exactly as before.
+
+---
+
+## Re-measured retrieval, and a regression worth recording
+
+`GET /evaluations` now serves the held-out set with all four configurations,
+matching what the harness measures. Two bugs and one genuine regression came out
+of making that true.
+
+### The endpoint had been serving a stale artifact
+
+The CLI writes `{"kind": "retrieval", "reports": [...]}` because `--set both`
+measures the tuning set and the held-out set in one run. The endpoint read the
+older flat shape, so **every run since that change was silently skipped** and
+the endpoint kept serving an artifact from an earlier commit — reporting three
+configurations for weeks after a fourth existed.
+
+Nothing failed. The reader found a file it understood, returned it, and stopped.
+A writer and a reader disagreeing about shape is the worst kind of drift,
+because the symptom is stale data rather than an error.
+
+The reader now understands both shapes, and where a file holds several reports
+it serves the **held-out** one, with `question_set` in the response so a tuned
+score can never be mistaken for an honest one.
+
+### The two benchmarks want different indexes
+
+The retrieval labels include one held-out question pointing at
+`backend/eval/metrics.py`. The agent benchmark needs `eval/` *excluded*, or it
+finds its own scaffolding. Both cannot hold on one index, and with `eval/`
+excluded the retrieval harness correctly refuses to run rather than scoring a
+missing file as a miss.
+
+`EXTRA_EXCLUDED_DIRECTORIES` is therefore empty by default, so the retrieval
+benchmark is the one that runs unattended. **Set it to `eval` before running the
+agent benchmark**, and expect the retrieval harness to refuse until it is
+cleared again. That is a real constraint, not a defect: a benchmark that scored
+a deliberately excluded file as a miss would be worse.
+
+### Retrieval got worse, and the reason is this documentation
+
+Measured on the held-out set at commit `b2150d0`, against the same numbers
+recorded at milestone 7:
+
+| configuration | R@5 then | R@5 now | MRR then | MRR now |
+| --- | --- | --- | --- | --- |
+| vector only | 0.607 | 0.607 | 0.664 | 0.631 |
+| hybrid | 0.750 | **0.643** | 0.661 | **0.607** |
+| hybrid + role weighting | 0.821 | **0.786** | 0.774 | **0.702** |
+
+The corpus grew from 1008 chunks to 1323, and most of that growth is prose:
+this file, the root README, `DEMO.md`, `security.md` and several ADRs, all
+written over the last few sessions. The failures say the same thing plainly —
+`h-con-02` returns `docs/security.md` and `ADR-006` where `fetcher.py` is
+wanted, and `h-con-04` returns `docs/rag.md` where the reranker and retriever
+are wanted.
+
+That is precisely the failure mode role weighting exists to correct, and it is
+correcting it: **+0.143 R@5 and +0.095 MRR over hybrid**, still the largest
+measured gain in the project. The weights are simply doing more work than they
+did against a smaller corpus.
+
+**The honest reading is that documenting a project degrades retrieval over it.**
+Writing about the code adds documents that compete with the code, and the effect
+is large enough to move a held-out benchmark. Fixing it means tuning the
+weights, and the weights were tuned on the dev set — so retuning them now would
+need a fresh held-out set to stay honest. That work is not done, and the number
+above is the current one rather than the best one ever recorded.

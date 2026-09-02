@@ -129,3 +129,72 @@ def test_one_unreadable_report_does_not_hide_an_earlier_valid_one(
 
     assert loaded is not None
     assert loaded["commit"] == "good"
+
+
+# --- the shape the CLI actually writes --------------------------------------
+
+
+def test_a_multi_report_file_is_read_rather_than_skipped(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Regression: the reader understood only the old flat shape.
+
+    `--set both` writes {"kind": ..., "reports": [...]}, so every run after that
+    change was silently skipped and the endpoint kept serving a stale artifact —
+    reporting three configurations for weeks after a fourth existed. A reader
+    that ignores what the writer emits fails silently, which is the worst way
+    for these two to disagree.
+    """
+    (tmp_path / "20260301T000000Z.json").write_text(
+        json.dumps(
+            {
+                "kind": "retrieval",
+                "generated_at": "2026-03-01T00:00:00Z",
+                "reports": [
+                    json.loads(_retrieval(question_set="dev", commit="dev-run")),
+                    json.loads(_retrieval(question_set="heldout", commit="held-run")),
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(evaluations, "RESULTS_DIR", tmp_path)
+
+    loaded = evaluations._load_latest()
+
+    assert loaded is not None
+    # The held-out set is the honest measure and is the one served.
+    assert loaded["commit"] == "held-run"
+    # The envelope's timestamp is carried onto the selected report.
+    assert loaded["generated_at"] == "2026-03-01T00:00:00Z"
+
+
+def test_the_tuning_set_is_served_only_when_it_is_all_there_is(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    (tmp_path / "20260301T000000Z.json").write_text(
+        json.dumps(
+            {
+                "kind": "retrieval",
+                "reports": [json.loads(_retrieval(question_set="dev", commit="dev-run"))],
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(evaluations, "RESULTS_DIR", tmp_path)
+
+    loaded = evaluations._load_latest()
+
+    assert loaded is not None
+    assert loaded["commit"] == "dev-run"
+
+
+def test_an_envelope_holding_no_usable_report_is_skipped(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    (tmp_path / "20260301T000000Z.json").write_text(
+        json.dumps({"kind": "retrieval", "reports": [{"nonsense": True}]}), encoding="utf-8"
+    )
+    monkeypatch.setattr(evaluations, "RESULTS_DIR", tmp_path)
+
+    assert evaluations._load_latest() is None

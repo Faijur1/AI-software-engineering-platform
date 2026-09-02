@@ -69,12 +69,19 @@ found each — vector, keyword, or both — what each scored it, and where the
 reranker moved it.
 
 Then `GET /evaluations`, or <http://localhost:8000/docs>, for the benchmark
-behind it: 40 labelled questions across a tuning set and a held-out set, three
+behind it: 40 labelled questions across a tuning set and a held-out set, four
 configurations measured over the same questions.
 
 > The baselines are the point. Reporting hybrid alone would be an assertion;
-> vector-only and keyword-only beside it are the evidence. Full numbers and the
-> reasoning are in [`README.md`](README.md).
+> vector-only and keyword-only beside it are the evidence.
+
+The endpoint serves the **held-out** set — written before any tuning, used for
+confirmation only — and names it in the response, so a tuned score cannot be
+mistaken for an honest one. Role weighting is the largest gain in the project:
+R@5 0.643 → 0.786, MRR 0.607 → 0.702. If asked why those are lower than the
+figures recorded at milestone 7: the corpus has grown by a third since, mostly
+documentation, and prose competes with source. That is the exact failure role
+weighting corrects, and the correction is still worth +0.143 R@5.
 
 ### 3. Consent before anything leaves the machine — 60 seconds
 

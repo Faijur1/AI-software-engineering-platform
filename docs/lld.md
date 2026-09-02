@@ -334,8 +334,11 @@ divides by `k` rather than by the number of results returned: three results
 where ten were allowed is genuinely worse, and normalising by the short list
 would hide an under-filled context window instead of penalising it.
 
-`runner.py` measures three configurations over the same questions, using the
-`use_vector` / `use_keyword` flags on `retrieve`. Reporting hybrid alone would
+`runner.py` measures four configurations over the same questions — vector only,
+keyword only, hybrid, and hybrid with role-weighted reranking — using the
+`use_vector` / `use_keyword` flags on `retrieve`. The reranker is part of a
+configuration rather than a separate axis, so "hybrid" always means the same
+thing and the reranked row is directly comparable to it. Reporting hybrid alone would
 be an assertion; the baselines are the evidence. It refuses to run when a
 labelled file is missing from the index, because scoring zero on a moved file
 is indistinguishable from a regression.

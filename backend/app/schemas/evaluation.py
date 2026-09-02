@@ -37,6 +37,10 @@ class EvaluationReportResponse(BaseModel):
     commit: str | None = None
     chunk_count: int
     question_count: int
+    # Which set produced these numbers. "heldout" was written before any tuning
+    # and is the number that generalises; "dev" has been tuned against. Serving
+    # one without naming it would let a tuned score read as an honest one.
+    question_set: str | None = None
     cutoffs: list[int]
     # Named so a consumer can tell whether reranking was active. While it is
     # "passthrough" these numbers are the pre-reranking baseline.

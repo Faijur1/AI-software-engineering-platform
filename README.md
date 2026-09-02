@@ -15,7 +15,9 @@ patches for human approval.
 > Retrieval is **measured and inspectable**: 40 labelled questions across a
 > tuning and a held-out set, and a UI showing every candidate with the scores
 > behind its rank. Role-weighted reranking is the largest measured gain in the
-> project (held-out R@5 0.750 → 0.821, MRR 0.661 → 0.774).
+> project: on the held-out set it lifts R@5 from 0.643 to **0.786** and MRR from
+> 0.607 to **0.702**. `GET /evaluations` serves that exact run, on the held-out
+> set — written before any tuning and used only for confirmation.
 >
 > **Answer quality is a function of the model, and the model is now
 > selectable.** Chat and the agent run behind a `ChatProvider` interface, so the

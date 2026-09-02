@@ -66,6 +66,7 @@ def latest_evaluation(user: CurrentUser) -> EvaluationReportResponse:
         commit=report.get("commit"),
         chunk_count=report["chunk_count"],
         question_count=report["question_count"],
+        question_set=report.get("question_set"),
         cutoffs=report["cutoffs"],
         reranker=report["reranker"],
         configurations=configurations,
@@ -96,14 +97,48 @@ def _load_latest() -> dict[str, Any] | None:
             logger.warning("evaluation_report_unreadable", path=path.name)
             continue
 
-        if _is_retrieval_report(loaded):
-            return loaded
+        if loaded.get("kind") == "agent":
+            logger.debug("evaluation_report_skipped", path=path.name)
+            continue
+        selected = _select_report(loaded)
+        if selected is not None:
+            # generated_at lives on the envelope, not the individual report.
+            selected.setdefault("generated_at", loaded.get("generated_at"))
+            return selected
         logger.debug("evaluation_report_skipped", path=path.name)
 
     return None
 
 
-def _is_retrieval_report(payload: dict[str, Any]) -> bool:
+def _select_report(payload: dict[str, Any]) -> dict[str, Any] | None:
+    """Return the single report to serve from a saved file.
+
+    The CLI writes ``{"kind": ..., "reports": [...]}`` because ``--set both``
+    measures the tuning set and the held-out set in one run. Older files are a
+    single report at the top level. Both shapes are read, because a reader that
+    understood only one of them silently skipped every new run and kept serving
+    a stale artifact -- which is exactly what happened: the endpoint reported
+    three configurations for weeks after a fourth was added.
+
+    When a file holds several, the **held-out** report is served. It is the
+    honest measure: it was written before any tuning and used for confirmation
+    only, so it is the number that generalises. Serving the tuning set without
+    saying so would flatter the system.
+    """
+    reports = payload.get("reports")
+    if isinstance(reports, list) and reports:
+        valid = [r for r in reports if isinstance(r, dict) and _has_configurations(r)]
+        if not valid:
+            return None
+        for report in valid:
+            if report.get("question_set") == "heldout":
+                return report
+        return valid[-1]
+
+    return payload if _has_configurations(payload) else None
+
+
+def _has_configurations(payload: dict[str, Any]) -> bool:
     """Whether ``payload`` is a retrieval benchmark report.
 
     Checked by shape rather than by filename. Reports written before the agent
@@ -111,8 +146,6 @@ def _is_retrieval_report(payload: dict[str, Any]) -> bool:
     special-case them; the fields a response actually needs are the honest
     test.
     """
-    if payload.get("kind") == "agent":
-        return False
     configurations = payload.get("configurations")
     if not isinstance(configurations, dict) or not configurations:
         return False

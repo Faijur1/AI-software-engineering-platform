@@ -1,12 +1,13 @@
 """Run the benchmark and report the numbers.
 
-Three configurations are measured against the same questions: vector only,
-keyword only, and hybrid. Reporting hybrid alone would be an assertion; the
-comparison is the evidence.
+Four configurations are measured against the same questions: vector only,
+keyword only, hybrid, and hybrid with role-weighted reranking. Reporting hybrid
+alone would be an assertion; the comparison is the evidence.
 
-The reranker is the passthrough throughout, deliberately. This is the baseline
-the real cross-encoder in milestone 7 will be measured against, and it is only
-a baseline if nothing has already reordered the results.
+The reranker is part of a configuration rather than a separate axis, so
+"hybrid" always means the same thing and the reranked row is directly
+comparable to it. Three of the four use the passthrough deliberately: a
+baseline is only a baseline if nothing has already reordered the results.
 
 Every number here comes from an actual run against a real index. Nothing is
 estimated, and a stale benchmark stops the run rather than scoring zero.
