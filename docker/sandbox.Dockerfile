@@ -19,3 +19,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     HOME=/tmp
 
 WORKDIR /workspace
+
+# Set the umask for everything the sandbox runs. See the script for why: without
+# it the sandbox creates files its own host cannot delete.
+COPY docker/sandbox-entrypoint.sh /usr/local/bin/sandbox-entrypoint
+RUN chmod 0755 /usr/local/bin/sandbox-entrypoint
+ENTRYPOINT ["/usr/local/bin/sandbox-entrypoint"]

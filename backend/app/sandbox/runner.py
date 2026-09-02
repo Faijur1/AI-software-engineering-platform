@@ -299,6 +299,59 @@ def run(
     )
 
 
+
+def remove_workspace(workspace: Path, *, image: str = DEFAULT_IMAGE) -> None:
+    """Delete a sandbox workspace, including anything the sandbox left behind.
+
+    The straightforward ``shutil.rmtree`` is tried first and normally succeeds:
+    the image sets ``umask 0000``, so what the sandbox creates is writable by
+    the workspace owner.
+
+    It is not sufficient on its own. Code running in the sandbox owns the files
+    it creates and may set any mode it likes on them, so a directory left at
+    0000 cannot be emptied by the host user however the umask was configured.
+    Untrusted code that can make its workspace undeletable can fill the disk of
+    whatever runs it, which is a denial of service rather than an untidiness.
+
+    So the fallback removes the tree from inside a container running as root,
+    which is permitted to unlink regardless of mode. That container gets the
+    same isolation as any other -- no network, and nothing mounted but the
+    directory being deleted.
+    """
+    shutil.rmtree(workspace, ignore_errors=True)
+    if not workspace.exists():
+        return
+
+    logger.warning("workspace_cleanup_needs_root", path=str(workspace))
+    if not is_available() or not image_exists(image):
+        logger.warning("workspace_leaked", path=str(workspace))
+        return
+
+    try:
+        subprocess.run(
+            [
+                "docker", "run", "--rm",
+                "--network", "none",
+                "--user", "0:0",
+                "--volume", f"{workspace.resolve()}:/target:rw",
+                "--entrypoint", "sh",
+                image,
+                "-c", "rm -rf /target/..?* /target/.[!.]* /target/*",
+            ],
+            capture_output=True,
+            timeout=60,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        logger.warning("workspace_cleanup_failed", path=str(workspace))
+
+    shutil.rmtree(workspace, ignore_errors=True)
+    if workspace.exists():
+        # Reported, never raised. The caller has a result; a leaked directory is
+        # an operational problem, not a reason to discard it.
+        logger.warning("workspace_leaked", path=str(workspace))
+
+
 def _force_remove(container_name: str) -> None:
     """Kill a container and wait until it is actually gone.
 

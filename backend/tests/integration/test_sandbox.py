@@ -305,3 +305,35 @@ def test_granting_access_leaves_the_parent_directory_alone(tmp_path: Path) -> No
 
     assert parent.stat().st_mode & 0o777 == 0o700
     assert workspace.stat().st_mode & 0o007 == 0o007
+
+
+def test_a_workspace_the_sandbox_wrote_into_can_still_be_removed(
+    tmp_path: Path,
+) -> None:
+    """Regression: cleanup failed with EPERM on Linux.
+
+    The sandbox creates files as uid 65534. The host user owns neither those
+    files nor the directories holding them, so it could not delete them and
+    could not chmod them either -- and TemporaryDirectory's cleanup chmods what
+    it cannot delete. Every patch validation leaked a directory nothing could
+    remove, and the error surfaced *after* a successful validation.
+    """
+    workspace = tmp_path / "ws"
+    workspace.mkdir()
+
+    result = run(
+        [
+            "python",
+            "-c",
+            "import os\n"
+            "os.makedirs('/workspace/nested/deeper')\n"
+            "open('/workspace/nested/deeper/file.txt','w').write('x')\n",
+        ],
+        workspace=workspace,
+    )
+    assert result.succeeded, result.stderr
+    assert (workspace / "nested" / "deeper" / "file.txt").exists()
+
+    runner.remove_workspace(workspace)
+
+    assert not workspace.exists()

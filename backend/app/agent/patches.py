@@ -30,6 +30,7 @@ from typing import Final
 from app.core.logging import get_logger
 from app.sandbox import SandboxResult
 from app.sandbox import run as sandbox_run
+from app.sandbox.runner import remove_workspace
 
 logger = get_logger(__name__)
 
@@ -209,7 +210,12 @@ def validate_patch(
     The copy matters: the caller's workspace is never mutated, so a patch that
     half-applies cannot corrupt the snapshot the rest of the run is reading.
     """
-    with tempfile.TemporaryDirectory(prefix="aisep-patch-") as temporary:
+    # Not TemporaryDirectory: its cleanup chmods what it cannot delete, and it
+    # cannot chmod a file the sandbox created under a different uid. That raised
+    # EPERM *after* a successful validation, turning a good result into an
+    # error. remove_workspace handles the ownership case and never raises.
+    temporary = tempfile.mkdtemp(prefix="aisep-patch-")
+    try:
         scratch = Path(temporary) / "workspace"
         shutil.copytree(workspace, scratch, symlinks=False, dirs_exist_ok=False)
 
@@ -249,6 +255,8 @@ def validate_patch(
             exit_code=tested.exit_code,
             timed_out=tested.timed_out,
         )
+    finally:
+        remove_workspace(Path(temporary))
 
 
 def _join(result: SandboxResult) -> str:
