@@ -58,6 +58,9 @@ DEFAULT_TIMEOUT_SECONDS: Final = 120
 WORKSPACE: Final = "/workspace"
 # nobody:nogroup. Present in Debian-based images and owns nothing.
 NON_ROOT_USER: Final = "65534:65534"
+# How long to wait for a killed container to actually disappear. Removal is
+# asynchronous, so teardown is only complete once the daemon stops listing it.
+TEARDOWN_WAIT_SECONDS: Final = 15.0
 
 # Output beyond this is truncated. A test suite that prints a megabyte of
 # failures should not be stored in full or shown to a model.
@@ -297,7 +300,20 @@ def run(
 
 
 def _force_remove(container_name: str) -> None:
-    """Kill and remove a container, tolerating it already being gone."""
+    """Kill a container and wait until it is actually gone.
+
+    Issuing kill and rm is not enough. The container is started with ``--rm``,
+    so the daemon begins its own auto-removal as soon as the process dies, and
+    an explicit ``docker rm`` racing that auto-removal is rejected with
+    "removal already in progress" -- a failure that means teardown is under way,
+    not that it failed. Either path removes the container, but both are
+    asynchronous: the commands return while the container is still listed.
+
+    So this waits for the end state rather than assuming the commands produced
+    it. The module promises guaranteed teardown, and returning while a container
+    is still present makes that promise depend on timing. It held on Windows and
+    broke on Linux, where the first CI run caught it.
+    """
     for action in ("kill", "rm"):
         try:
             subprocess.run(
@@ -308,6 +324,33 @@ def _force_remove(container_name: str) -> None:
             )
         except (OSError, subprocess.SubprocessError):
             logger.warning("sandbox_teardown_failed", container=container_name, action=action)
+
+    deadline = time.monotonic() + TEARDOWN_WAIT_SECONDS
+    while time.monotonic() < deadline:
+        if not _container_exists(container_name):
+            return
+        time.sleep(0.1)
+
+    # Reported rather than raised. The caller already has a result to return,
+    # and a leaked container is an operational problem, not a reason to discard
+    # the run's output.
+    logger.warning("sandbox_container_still_present", container=container_name)
+
+
+def _container_exists(container_name: str) -> bool:
+    """Whether the daemon still lists the container, in any state."""
+    try:
+        listed = subprocess.run(
+            ["docker", "ps", "-a", "--filter", f"name={container_name}", "--format", "{{.Names}}"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        # Cannot tell, so do not claim it is gone.
+        return True
+    return container_name in listed.stdout
 
 
 def _truncate(text: str) -> tuple[str, bool]:

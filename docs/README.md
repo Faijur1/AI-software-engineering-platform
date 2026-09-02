@@ -647,3 +647,84 @@ the gate is now configured in `pyproject.toml` and covers all three, so a bare
 
 - Quality gate: `ruff` clean, `mypy --strict` clean on **119 files** (was 82;
   tests now included), 345 tests passing, `tsc --noEmit` clean, `eslint` clean.
+
+---
+
+## What CI found in its first three runs
+
+CI was added expecting it to sit green and guard against future mistakes. It
+failed immediately, three times, and every failure was a real defect that had
+been passing on Windows for weeks. That is the argument for having it, so the
+findings are recorded rather than quietly fixed.
+
+**A test asserting the environment rather than the code.** `/health` also checks
+the model, CI has no model, so it answered 503 and the integration test
+asserting 200 failed. The endpoint was right — it distinguishes `degraded` from
+`ok`, and one dependency being down should stop it claiming health. The test was
+wrong to assert whole-system green in a tier that does not bring up the whole
+system, so it is split by what each tier actually provides, with the fully-green
+assertion moved to the `llm` tier.
+
+A second defect hid behind it: a test whose file marks `integration` and which
+itself marks `llm` carries both markers, so `-m integration` selected it and the
+model tier leaked back into a job with no model. The selector is now
+`-m "integration and not llm"`.
+
+**The sandbox could not write to its own workspace on Linux.** The container
+runs as uid 65534 while the workspace belongs to whoever runs the application.
+On Linux that ownership is real, so a 0700 temp directory is unwritable by the
+sandbox: patch application could not create its applier script, and test runs
+could not write output. Docker Desktop for Windows presents every bind mount as
+world-writable, which hid it completely. **This was a defect in the sandbox, not
+in CI** — the deployment target is Linux, so patch validation would have failed
+there while passing on the machine it was built on.
+
+The fix widens the workspace tree rather than running as the invoking user's
+uid. That more usual fix was rejected: it makes the container's privileges
+depend on how the application is deployed, and runs untrusted code as root
+whenever the application runs as root, which in a container is the default.
+
+**Teardown was not guaranteed, only likely.** The container starts with `--rm`,
+so the daemon begins auto-removal as soon as the process dies, and an explicit
+`docker rm` racing that is rejected with "removal already in progress". Both
+paths remove the container but both are asynchronous, so `run()` returned while
+the container was still listed. The module docstring promised guaranteed
+teardown; what it had was teardown that usually finished first. It now waits for
+the container to actually disappear.
+
+### How the failures were diagnosed
+
+Reading CI logs needs an authenticated token and the stored one had expired, so
+the failures were reproduced locally instead. Two early guesses — leftover data
+in the development database, tests reaching a live model — were both wrong, and
+both were checked rather than acted on.
+
+What worked was reproducing the environment rather than reasoning about it:
+running the suite on Linux against a clean database named the health failure in
+one pass, and a nested Docker daemon with a shared `/tmp` named the teardown
+race. An earlier attempt that shared the host Docker socket into a container was
+invalid and was discarded — bind mounts resolve against the host daemon, so the
+workspace was simply absent and the failure had a different cause than the one
+being investigated.
+
+## Route smoke tests
+
+`GET /evaluations` returned 500 for several commits and nothing noticed, so
+every documented route is now swept: nothing may answer 500, and every error
+must be the envelope `docs/api.md` specifies.
+
+The route list comes from the OpenAPI spec rather than a literal, so a route
+added tomorrow is covered without anyone remembering. That is the property that
+would have caught the original bug — the fault was in a route nobody thought to
+re-check.
+
+The sweep was verified by reintroducing the bug: it fails with
+`GET /evaluations -> 500` and passes again when the fix is restored. A
+regression test never seen to fail is a guess. Two further guards stop it
+passing vacuously: one route must return real data, so an empty spec cannot look
+like success, and `/evaluations` is named explicitly so the specific regression
+cannot quietly leave the sweep.
+
+`/health` is exempt from the envelope rule and only that rule: its 503 is a
+report rather than a failure, and a client reads which dependency is down out of
+the body.
