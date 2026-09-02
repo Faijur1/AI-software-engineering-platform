@@ -215,17 +215,53 @@ cutoff, plus `mrr` and a `by_style` breakdown. `reranker` names what was active
 during the run; while it reads `passthrough`, the numbers are the pre-reranking
 baseline.
 
+### Agents, traces and patches
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| POST | `/agents/run` | Queue an agent run; **202** with a record to poll |
+| GET | `/agents/runs/{id}` | A run, its tool calls and its patch ids |
+| GET | `/traces/{id}` | Ordered events for one run |
+| POST | `/patches` | Propose a patch from a run |
+| GET | `/patches/{id}` | A patch and its diff |
+| POST | `/patches/{id}/approve` | Approve or reject; a human action |
+
+`POST /agents/run` returns **202**: a run is minutes of model calls and
+sandboxed execution, so no request waits for it. `max_iterations` is bounded in
+the schema (1–20), not merely defaulted — the cap is what stops a confused
+model looping, so a client must not be able to raise it arbitrarily.
+
+`allow_tests` defaults to **false**. Running a repository's test suite is a far
+larger capability than reading it, so `sandbox:execute` is granted per run and
+never assumed.
+
+A run's `status` is `queued | running | succeeded | failed |
+max_iterations_exceeded`. The last is **not** a failure: the run did work and
+has partial state worth showing, and collapsing them would hide the difference
+between "this went wrong" and "this needed more room".
+
+`tool_runs` includes **rejected** calls — a hallucinated tool name or a refused
+path is how a run that went nowhere becomes diagnosable, and tool-selection
+accuracy is a metric.
+
+`/traces/{id}` is ordered by sequence, not timestamp: two events can land in
+the same millisecond, and an ordering that sometimes inverts is worse than
+none.
+
+A patch's `validated` is a **nullable** boolean. Null means *not validated* and
+must never be read as passed. Approving an unvalidated patch is allowed —
+refusing would be the tool overriding the human — but the record shows exactly
+what was known at the time. Deciding twice returns **409**, because
+re-approving would overwrite who decided and when.
+
+Runs, traces and patches are all authorised through the owning repository, so
+an id alone never discloses another user's work.
+
 ## Planned endpoints
 
 | Method | Path | Purpose | Milestone |
 | --- | --- | --- | --- |
 | POST | `/chat` | Ask a question; answer with citations | 7 |
-| POST | `/agents/run` | Start an agent run | 9 |
-| GET | `/agents/runs/{id}` | Run status and result | 9 |
-| GET | `/traces/{id}` | Ordered events for a run | 9 |
-| POST | `/patches` | Create a proposed patch | 9 |
-| GET | `/patches/{id}` | Patch and its diff | 9 |
-| POST | `/patches/{id}/approve` | Approve a patch (human gate) | 9 |
 
 ### Conventions for the ones not yet built
 

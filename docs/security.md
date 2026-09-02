@@ -88,8 +88,12 @@ during ingestion and are never embedded or shown to the LLM.
 | Session auth (backend-issued HS256 cookie, HttpOnly) | Implemented |
 | OAuth CSRF protection (`state`, cookie-pinned, constant-time compare) | Implemented |
 | Repository-level authorization (owner-scoped queries, 404 not 403) | Implemented |
+| Sandboxed execution of untrusted code (ADR-006) | Implemented |
+| Tool permissions enforced in code, not prompts | Implemented |
+| Path containment on every tool and patch | Implemented |
+| Human approval gate before any patch is accepted | Implemented |
 | Rate limiting on expensive endpoints | Planned |
-| Audit logging of agent actions and approvals | Planned |
+| Audit logging of agent actions and approvals | Implemented |
 | RBAC (admin / developer / viewer) | Planned — Stage 3 |
 
 ## Non-negotiables

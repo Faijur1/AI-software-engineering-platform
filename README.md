@@ -6,24 +6,22 @@ to help with real software engineering tasks: answering questions about the
 code, investigating bugs, running tests safely in a sandbox, and proposing
 patches for human approval.
 
-> ### Current status: Stage 1, milestone 8 of 9 — inspectable retrieval
+> ### Current status: Stage 1, all 9 milestones built
 >
-> Infrastructure, GitHub OAuth, repository connection, ingestion, embeddings
-> into pgvector and **hybrid retrieval (vector + full-text, rank-fused) are
-> built and verified.** Chat, the RAG inspector and the agent are not
-> implemented yet, and reranking is a deliberately inert placeholder until
-> milestone 7.
+> Ingestion, retrieval, the evaluation harness, the inspector, the agent loop,
+> the Docker sandbox and the patch approval gate are all built and tested.
 >
 > Retrieval is **measured and inspectable**: 40 labelled questions across a
 > tuning and a held-out set, and a UI showing every candidate with the scores
 > behind its rank. Role-weighted reranking is the largest measured gain in the
 > project (held-out R@5 0.750 → 0.821, MRR 0.661 → 0.774).
 >
-> **Chat answers are not yet trustworthy.** The models that fit in this
-> machine's memory cite unreliably and make factual errors, with the right code
-> in front of them. Retrieval is not the bottleneck; the model is. See
-> [`docs/README.md`](docs/README.md) and the draft
-> [ADR-013](docs/adr/ADR-013-cloud-llm-provider.md).
+> **What the models can do is the limit, not the machinery.** The largest model
+> that fits in this machine's 7.7 GB cites unreliably, makes factual errors with
+> the right code in front of it, and cannot produce a valid unified diff. The
+> agent's guardrails, sandbox and traces all work; its *decisions* are poor.
+> Retrieval is not the bottleneck. See [`docs/README.md`](docs/README.md) and
+> the draft [ADR-013](docs/adr/ADR-013-cloud-llm-provider.md).
 >
 > [`docs/README.md`](docs/README.md) tracks exactly what is built, what is
 > verified, and what remains. Nothing is described as working until it has
@@ -43,7 +41,7 @@ patches for human approval.
 | Reranking | Role-weighted, path-based (ADR-012) |
 | LLM | Ollama — `qwen2.5-coder:7b` *(planned)* |
 | Auth | GitHub OAuth, backend-owned; signed HttpOnly session cookie |
-| Sandbox | Docker, isolated per run *(planned)* |
+| Sandbox | Docker, isolated per run (ADR-006) |
 
 Design documents and architecture decision records live in [`docs/`](docs/).
 Start with [`docs/hld.md`](docs/hld.md).
@@ -102,9 +100,12 @@ cd frontend
 npm install
 npm run dev
 
-# Ingestion worker (in a third terminal) — required for indexing
+# Ingestion and agent worker (in a third terminal)
 cd backend
 ./.venv/Scripts/python.exe -m app.workers.run_worker
+
+# Sandbox image — required for running tests and validating patches
+docker build -f docker/sandbox.Dockerfile -t aisep-sandbox:latest .
 ```
 
 Without the worker running, indexing jobs queue and stay `queued`. Everything

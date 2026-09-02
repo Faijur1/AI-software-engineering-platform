@@ -5,6 +5,7 @@ import { UserMenu } from "@/features/auth/UserMenu";
 import type { User } from "@/features/auth/types";
 import { IndexButton } from "@/features/repositories/IndexButton";
 import { RepositoryActionButton } from "@/features/repositories/RepositoryActionButton";
+import { AgentPanel } from "@/features/agent/AgentPanel";
 import { ChatPanel } from "@/features/chat/ChatPanel";
 import { InspectorPanel } from "@/features/search/InspectorPanel";
 import {
@@ -121,6 +122,7 @@ export default async function RepositoriesPage({ searchParams }: PageProps) {
         )}
       </section>
 
+      {searchable && <AgentPanel repositoryId={searchable.id} />}
       {searchable && <ChatPanel repositoryId={searchable.id} />}
       {searchable && <InspectorPanel repositoryId={searchable.id} />}
 

@@ -25,8 +25,8 @@ backend/
 │   │                           embedder, service
 │   ├── rag/                    vector, keyword, fusion, reranker, retriever
 │   ├── llm/                    EmbeddingProvider + Ollama implementation
-│   ├── agent/                  (planned) engine, state, tools/
-│   ├── sandbox/                (planned) Docker runner
+│   ├── agent/                  engine, tools, tracing, patches
+│   ├── sandbox/                Docker runner (ADR-006)
 │   ├── queue/                  queue interface + RQ backend (ADR-003)
 │   └── workers/                worker entrypoints
 ├── migrations/                 Alembic

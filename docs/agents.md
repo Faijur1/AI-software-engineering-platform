@@ -1,7 +1,9 @@
 # Agent architecture
 
-> **Status: planned (milestone 9).** Not implemented. Stage 1 is a single agent
-> loop; specialised agents are deferred to Stage 2 (ADR-007).
+> **Status: built (milestone 9), and limited by the local model.** The loop,
+> tools, sandbox, patches and tracing all work and are tested. The model's
+> *decisions* are poor — see [`docs/README.md`](README.md). Specialised agents
+> remain deferred to Stage 2 (ADR-007).
 
 ## Stage 1 loop
 
@@ -37,7 +39,9 @@ required permissions, and validates its input before executing.
 | `get_repo_structure` | Directory tree overview | repo:read |
 | `run_tests` | Execute the test suite in the sandbox | sandbox:execute |
 
-Constraints that hold regardless of what the model asks for:
+Constraints that hold regardless of what the model asks for. All of these are
+enforced in `app/agent/tools.py` and asserted by tests that ask the registry to
+do the forbidden thing:
 
 - Tool names are resolved against a fixed registry — the agent cannot invoke
   anything not registered.
@@ -70,10 +74,34 @@ Stage 1 exposes these as a list. The Stage 2 replay UI (play/pause/step/speed)
 replays these stored events — it is a view over recorded data, never a
 reconstruction or an animation.
 
+## Handling a weak model
+
+The loop is built for the model it actually has. Two behaviours follow:
+
+**A malformed proposal is control flow, not a crash.** Small models wrap JSON
+in prose, fence it, or emit an object with neither a tool nor an answer. The
+parser extracts the first balanced object — tracking string state so braces
+inside strings do not break it — and where it cannot, reports a parse error
+rather than inferring an action the model never asked for. Guessing intent
+would be worse than failing. The iteration is spent and the loop continues,
+because failing the run outright would make the agent unusable with any model
+that is not already excellent.
+
+**A refusal is information.** A rejected tool call is fed back in words the
+model can act on, and recorded rather than discarded. In a live run the model
+asked to read a file with no workspace mounted, was refused, and chose
+`search_symbol` instead — the model chooses, the code decides.
+
 ## Evaluation
 
 Agent metrics, measured not asserted: task success rate, tool selection
 accuracy, iteration count, failure rate, test pass rate, execution latency.
 
-These form the Stage 1 baseline. Stage 2's multi-agent split is justified only
-if it beats that baseline (ADR-007).
+**Not yet measured.** There is no agent benchmark, and building one against a
+model this weak would measure the model rather than the system. The retrieval
+benchmark (milestone 6) exists because retrieval quality was worth measuring at
+this stage; agent metrics are worth measuring once a model that can follow the
+protocol is available — see [ADR-013](adr/ADR-013-cloud-llm-provider.md).
+
+These will form the Stage 1 baseline. Stage 2's multi-agent split is justified
+only if it beats that baseline (ADR-007).

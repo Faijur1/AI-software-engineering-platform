@@ -29,7 +29,7 @@ planned. Documents describing later milestones mark unbuilt sections as
 | 6 | Evaluation harness, labelled benchmark, Recall@K / Precision@K | ✅ **Done — verified** |
 | 7 | Reranking + chat answers with citations | ⚠️ **Partial — see below** |
 | 8 | RAG inspector UI | ✅ **Done — verified** |
-| 9 | Agent loop, tools, Docker sandbox, patch proposal + diff viewer | ⬜ Not started |
+| 9 | Agent loop, tools, Docker sandbox, patch proposal + diff viewer | ⚠️ **Built — model-limited** |
 
 ### Milestone 1 — what was verified
 
@@ -425,3 +425,74 @@ staying local, moving to a cloud LLM, or a provider interface with per-
 repository opt-in, and it treats the security trade-off — private repository
 source leaving the machine — as the substance of the decision rather than a
 footnote. No decision has been made.
+
+### Milestone 9 — what was verified
+
+**The sandbox boundary is real, and each property is asserted by an attempt to
+break it** (ADR-006 says these are tested rather than assumed). Against real
+containers: outbound connections refused, DNS unresolvable, uid 65534 not root,
+writes to `/` rejected while the workspace mount works, nothing of the host
+visible, a 120s sleep killed at a 5s timeout with the container confirmed gone
+afterwards, a 400 MB allocation stopped under a 128 MB limit, oversized output
+truncated with a marker. The flag list is also asserted without starting a
+container, so silently dropping one fails there.
+
+**Guardrails hold regardless of what the model asks for.** All five
+path-traversal spellings refused; permission checked *before* arguments are
+parsed, so a refusal never depends on the call being well-formed; filesystem
+tools refusing rather than falling back to the host when no workspace exists.
+`run_tests` builds its own argv — the agent supplies a path-checked target,
+never an interpreter or flags, because a tool that takes a command line is a
+shell.
+
+**Patches are gated three ways.** Parsing is not applying (the diff is
+inspected on the host, nothing written). Applying happens in the container
+against a *copy*, so a half-applied patch cannot corrupt the snapshot the run
+is reading. Validation is not approval. A test bypasses the parser deliberately
+to prove the container-side path check is real rather than decorative.
+
+**A real run with the local model** (`qwen2.5-coder:3b`, 5-iteration cap):
+
+| Task | Iterations | Outcome |
+| --- | --- | --- |
+| "Which function verifies the OAuth state parameter?" | 4 | Found the right file area; concluded the invented name it searched for was absent |
+| "How are secret files stopped from being indexed?" | 2 | Named `filters.py` correctly; attributed the mechanism to the wrong symbol |
+
+The machinery works. Iteration 2 of the first run is the interesting one: the
+model asked to `read_file`, the tool refused because no workspace was mounted,
+the refusal was fed back in words it could act on, and it chose `search_symbol`
+instead. That is the whole design — the model chooses, the code decides — doing
+its job on a live run rather than in a fixture. Traces recorded 12 and 6 events
+in correct sequence order, and both runs reached a terminal state with
+timestamps persisted.
+
+**The model's decisions are poor, as expected.** It anchored on a function name
+it invented (`verify_oauth_state`) rather than searching for the concept, and
+it identified the right file while describing the wrong mechanism. This is the
+same ceiling chat hit in milestone 7, and it is why milestone 9 is recorded as
+*built, model-limited* rather than done. **No patch was generated in a live
+run** — producing a valid unified diff is beyond this model, and the patch path
+is verified against fixtures rather than model output.
+
+Retrieval is not the bottleneck; the model is. [ADR-013](adr/ADR-013-cloud-llm-provider.md)
+is the lever, not more agent code.
+
+#### Two findings from the live run
+
+**The stored GitHub token had expired.** The first end-to-end attempt failed
+with `GitHub returned 401`. The OAuth App is a GitHub App (client id `Ov23li…`),
+whose user tokens expire after roughly eight hours. Two consequences: the run
+was re-done without the snapshot (search tools read the database, so the loop,
+guardrails and trace were still exercised with the real model), and the error
+message was fixed — a 401 during fetch now says the authorisation expired and
+to sign in again, rather than surfacing a bare status code.
+
+**`python:3.11-slim` has no pytest**, and `--network none` means it cannot be
+installed, so patch validation could never have run. Fixed the way ADR-006 says
+to: a pre-built image (`docker/sandbox.Dockerfile`) built where the contents are
+reviewable and the build still has a network. The runner checks the image exists
+and names the build command rather than failing with an unrecoverable pull
+error.
+
+- Quality gate: `ruff` clean, `mypy --strict` clean on 82 files, 336 tests
+  passing, `tsc --noEmit` clean, `eslint` clean, `next build` succeeding.

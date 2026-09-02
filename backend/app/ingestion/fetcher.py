@@ -30,7 +30,11 @@ from typing import Any, Final
 
 import httpx
 
-from app.core.errors import ExternalServiceError, NotFoundError
+from app.core.errors import (
+    AuthenticationError,
+    ExternalServiceError,
+    NotFoundError,
+)
 from app.core.logging import get_logger
 from app.services.github import API_BASE, auth_headers
 
@@ -66,6 +70,13 @@ def resolve_commit(token: str, owner: str, name: str, ref: str) -> str:
     except httpx.HTTPError as exc:
         raise ExternalServiceError("GitHub could not be reached") from exc
 
+    if response.status_code == 401:
+        # The token has expired or been revoked. Reported as an authentication
+        # problem the user can act on, not as a generic upstream failure --
+        # "GitHub returned 401" tells them nothing about what to do.
+        raise AuthenticationError(
+            "Your GitHub authorisation has expired or been revoked. Sign in again."
+        )
     if response.status_code == 404:
         raise NotFoundError("Repository or branch not found")
     if response.status_code >= 400:
@@ -116,6 +127,11 @@ def _download(token: str, owner: str, name: str, ref: str, destination: Path) ->
             httpx.Client(timeout=_DOWNLOAD_TIMEOUT, follow_redirects=True) as client,
             client.stream("GET", url, headers=headers) as response,
         ):
+            if response.status_code == 401:
+                raise AuthenticationError(
+                    "Your GitHub authorisation has expired or been revoked. "
+                    "Sign in again."
+                )
             if response.status_code == 404:
                 raise NotFoundError("Repository or branch not found")
             if response.status_code >= 400:
