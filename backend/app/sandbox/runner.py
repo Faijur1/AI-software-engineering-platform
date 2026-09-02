@@ -24,6 +24,7 @@ arguments and version-dependent defaults.
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import time
@@ -171,6 +172,46 @@ def build_command(
     ]
 
 
+
+def _grant_workspace_access(workspace: Path) -> None:
+    """Let the sandbox user write to the workspace.
+
+    The container runs as uid 65534, while the workspace is created by whatever
+    user runs the application. On Linux that ownership is real, so 0700 or 0755
+    temp directories leave the sandbox unable to write: patch application could
+    not create its applier script, and a test run could not write output. On
+    Docker Desktop for Windows every bind mount appears world-writable, which
+    hides the problem entirely -- the sandbox tests passed on Windows and failed
+    on the first Linux CI run.
+
+    The alternative was to run as the invoking user's uid instead. That is the
+    more common fix and it is rejected here: it makes the container's privileges
+    depend on how the application happens to be deployed, and it runs untrusted
+    code as root whenever the application itself runs as root, which in a
+    container is the default. A fixed unprivileged uid is worth keeping.
+
+    Widening the mode does not widen exposure. The workspace is a disposable
+    per-run directory holding only what was put there for this run, and reaching
+    it from outside still requires traversing its parent, whose permissions are
+    untouched. Nothing else is mounted.
+    """
+    if os.name != "posix":
+        # Windows has no POSIX mode bits worth setting, and Docker Desktop
+        # presents bind mounts as writable regardless.
+        return
+
+    for path in (workspace, *workspace.rglob("*")):
+        try:
+            mode = path.stat().st_mode
+            # Directories need traverse as well as write; files need neither.
+            path.chmod(mode | (0o007 if path.is_dir() else 0o006))
+        except OSError:
+            # A path that cannot be adjusted is left alone. If it turns out to
+            # matter the command fails with a clear permission error, which is
+            # a better outcome than refusing to run over a file nothing touches.
+            logger.debug("workspace_chmod_skipped", path=str(path))
+
+
 def run(
     argv: list[str],
     *,
@@ -193,6 +234,7 @@ def run(
         )
     if not workspace.is_dir():
         raise SandboxError("The workspace directory does not exist")
+    _grant_workspace_access(workspace)
     if not image_exists(image):
         raise SandboxUnavailableError(
             f"The sandbox image '{image}' is not built. Build it first: "

@@ -10,6 +10,7 @@ Needs Docker running, and the ``python:3.11-slim`` image available.
 
 from __future__ import annotations
 
+import os
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -255,3 +256,52 @@ def test_an_unavailable_docker_refuses_rather_than_degrading(
 
     with pytest.raises(SandboxUnavailableError):
         run(["python", "-c", "print('should never run')"], workspace=workspace)
+
+
+# --- workspace permissions ---------------------------------------------------
+
+
+def test_the_sandbox_user_can_write_to_a_private_workspace(tmp_path: Path) -> None:
+    """Regression: this failed on Linux and passed on Windows.
+
+    The container runs as uid 65534; the workspace belongs to whoever runs the
+    application. On Linux a 0700 temp directory is therefore unwritable by the
+    sandbox, so patch application and test runs both failed. Docker Desktop for
+    Windows presents every bind mount as world-writable, which hid it until the
+    first CI run on Linux.
+    """
+    if os.name == "posix":
+        tmp_path.chmod(0o700)
+    (tmp_path / "existing.txt").write_text("before", encoding="utf-8")
+    if os.name == "posix":
+        (tmp_path / "existing.txt").chmod(0o600)
+
+    result = run(
+        [
+            "python",
+            "-c",
+            "open('/workspace/created.txt','w').write('new')\n"
+            "open('/workspace/existing.txt','a').write(' + more')\n",
+        ],
+        workspace=tmp_path,
+    )
+
+    assert result.succeeded, result.stderr
+    assert (tmp_path / "created.txt").exists()
+    assert "more" in (tmp_path / "existing.txt").read_text(encoding="utf-8")
+
+
+def test_granting_access_leaves_the_parent_directory_alone(tmp_path: Path) -> None:
+    """The widening is scoped to the workspace, so nothing above it opens up."""
+    if os.name != "posix":
+        pytest.skip("POSIX mode bits")
+
+    parent = tmp_path / "parent"
+    workspace = parent / "ws"
+    workspace.mkdir(parents=True)
+    parent.chmod(0o700)
+
+    runner._grant_workspace_access(workspace)
+
+    assert parent.stat().st_mode & 0o777 == 0o700
+    assert workspace.stat().st_mode & 0o007 == 0o007
