@@ -116,16 +116,30 @@ If chosen, concretely:
 
 ## A prior question, now answered
 
-This ADR assumes Stage 2 proceeds. **The milestone-1 baseline says it should
-not yet.** Measured on `qwen2.5-coder:3b`: tool validity 1.000 across 39 calls,
-but 0 of 4 investigation tasks solved and several confidently wrong answers.
+This ADR assumes Stage 2 proceeds. **The milestone-1 baseline says: not yet,
+but less decisively than first reported.**
 
-That points away from this decision rather than towards it. Handoffs are a
-coordination mechanism, and coordination is the part that already works — the
-model never broke the agent contract once. What fails is reasoning, which five
-copies of the same model do not fix.
+Measured on `qwen2.5-coder:3b` after two corrections to the measurement itself
+(see [`docs/README.md`](../README.md)): tool validity **1.000** — the model
+never once broke the agent contract — with lookups at **0.750** and
+investigations at **0.250**.
 
-So this ADR stays a draft, and stays unimplemented, until
+Two readings, and both deserve stating:
+
+*Against acting now.* Handoffs are a coordination mechanism, and coordination
+is the part that already works. What fails is reasoning across steps, and five
+copies of the same model do not fix that.
+
+*For acting.* A threefold gap between single-step and multi-step tasks is
+exactly what a Manager decomposing an investigation into lookups would target.
+The corrected numbers support this argument more than the original ones did,
+when investigations scored zero and the case looked hopeless either way.
+
+The counter to the second reading is that the Manager's decomposition is itself
+a reasoning task run by the same model, and that handoffs add failure modes the
+current benchmark does not measure at all.
+
+So this ADR stays a draft and stays unimplemented until
 [ADR-013](ADR-013-cloud-llm-provider.md) is resolved and the baseline is re-run
-on a model that can synthesise across steps. The analysis above is still the
-analysis to act on when that happens; only its timing has changed.
+on a stronger model. If that run shows lookups strong and investigations still
+weak, this ADR becomes the next thing to decide rather than the thing to defer.

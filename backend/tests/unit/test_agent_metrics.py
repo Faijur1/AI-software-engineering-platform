@@ -8,7 +8,13 @@ flatter the system if left vague.
 from __future__ import annotations
 
 from eval.agent_benchmark import AGENT_BENCHMARK, TaskShape, expected_paths
-from eval.agent_runner import AgentBaseline, TaskResult, _aggregate, _mentions
+from eval.agent_runner import (
+    AgentBaseline,
+    TaskResult,
+    _aggregate,
+    _mentions,
+    rescore,
+)
 
 
 def _result(**kwargs: object) -> TaskResult:
@@ -173,3 +179,96 @@ def test_both_task_shapes_are_represented() -> None:
 
 def test_expected_paths_are_repository_relative() -> None:
     assert all(path.startswith(("backend/", "frontend/", "docs/")) for path in expected_paths())
+
+
+def test_naming_only_the_filename_counts_as_finding_the_file() -> None:
+    """Regression: the first version demanded the full path.
+
+    "enforced in the `engine.py` file" identifies
+    backend/app/agent/engine.py as surely as quoting the whole path does.
+    Requiring the path measured citation formatting rather than whether the
+    answer was found, and understated the recorded baseline as a result.
+    """
+    files = frozenset({"backend/app/agent/engine.py"})
+
+    assert _mentions("enforced in the `engine.py` file", files)
+    assert _mentions("see backend/app/agent/engine.py", files)
+
+
+def test_a_different_file_is_still_a_miss() -> None:
+    """The basename rule must not make every answer a hit."""
+    files = frozenset({"backend/app/agent/engine.py"})
+
+    assert not _mentions("it is in eval/agent_runner.py", files)
+    assert not _mentions("somewhere in the backend", files)
+
+
+def test_rescoring_recomputes_from_the_stored_answers() -> None:
+    """A metric fix must be comparable on the same answers, not on a second
+    run of a nondeterministic model."""
+    payload = {
+        "model": "m",
+        "repository": "r",
+        "commit": None,
+        "task_count": 1,
+        "repeats": 1,
+        "max_iterations": 6,
+        "results": [
+            {
+                "id": "a-07",
+                "task": "Where is the iteration limit enforced?",
+                "shape": "lookup",
+                "status": "succeeded",
+                "iterations": 2,
+                "duration_s": 5.0,
+                "answer": "It is enforced in the `engine.py` file.",
+                # Stored as a miss under the old full-path rule.
+                "hit": False,
+                "named_symbol": False,
+                "tool_calls": 1,
+                "tools_succeeded": 1,
+                "tools_rejected": 0,
+                "tools_failed": 0,
+                "tools_used": ["search_code"],
+                "tools_reasonable": True,
+            }
+        ],
+    }
+
+    rescored = rescore(payload)
+
+    assert rescored.results[0].hit is True
+    assert rescored.success_rate == 1.0
+
+
+def test_rescoring_skips_a_task_no_longer_in_the_benchmark() -> None:
+    """Skipped rather than guessed at, and the totals reflect it."""
+    payload = {
+        "model": "m",
+        "repository": "r",
+        "commit": None,
+        "task_count": 1,
+        "repeats": 1,
+        "max_iterations": 6,
+        "results": [
+            {
+                "id": "removed-task",
+                "task": "gone",
+                "shape": "lookup",
+                "status": "succeeded",
+                "iterations": 1,
+                "duration_s": 1.0,
+                "answer": "anything",
+                "hit": True,
+                "named_symbol": True,
+                "tool_calls": 0,
+                "tools_succeeded": 0,
+                "tools_rejected": 0,
+                "tools_failed": 0,
+                "tools_used": [],
+                "tools_reasonable": False,
+            }
+        ],
+    }
+
+    assert rescore(payload).results == []

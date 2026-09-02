@@ -56,76 +56,87 @@ for milestone 4. It is a draft: recommendation stated, decision not taken.
 
 #### Stage 1 agent baseline
 
-`qwen2.5-coder:3b`, 12 tasks, one run each, iteration cap 6, commit `39a65ac`
-(1,110 embedded chunks), `repo:read` only.
+`qwen2.5-coder:3b`, 12 tasks, one run each, iteration cap 6, `repo:read` only.
+
+**The first published version of this baseline was wrong in two ways, both
+defects in the measurement rather than in the model.** Corrected numbers first,
+then what changed and why.
 
 | Metric | Value |
 | --- | --- |
-| task success (named expected file or symbol) | **0.333** |
-| named the expected symbol | 0.250 |
+| task success (named expected file or symbol) | **0.583** |
+| named the expected symbol | 0.417 |
 | tool validity (accepted / all calls) | **1.000** |
-| chose only reasonable tools | 0.667 |
-| mean iterations | 3.25 |
-| median run duration | 110.2 s |
-| terminal status | 10 succeeded, 2 `max_iterations_exceeded` |
+| chose only reasonable tools | 0.750 |
+| mean iterations | 3.17 |
+| median run duration | 46.5 s |
+| terminal status | 11 succeeded, 1 `max_iterations_exceeded` |
 
 | Task shape | n | success | symbol | mean iterations |
 | --- | --- | --- | --- | --- |
-| lookup | 8 | 0.500 | 0.375 | 3.25 |
-| investigation | 4 | **0.000** | 0.000 | 3.25 |
+| lookup | 8 | **0.750** | 0.500 | 3.25 |
+| investigation | 4 | **0.250** | 0.250 | 3.00 |
 
-**The protocol is not the problem. Tool validity was 1.000** — across 39 tool
-calls the model never invented a tool name and never produced arguments that
-failed validation. The guardrails built in milestone 9 were never needed in
-this run. Whatever is failing, it is not the agent contract.
+#### What the two corrections were
 
-**Investigation tasks scored 0 of 4.** Both `max_iterations_exceeded` runs
-spent five or six iterations on repeated `read_file` calls without converging.
-The loop terminates correctly and returns partial state; the model simply does
-not synthesise across steps.
+| | contaminated index | clean index |
+| --- | --- | --- |
+| original metric (full path required) | 0.333 | 0.500 |
+| corrected metric (basename counts) | 0.333 | **0.583** |
 
-**Several answers were confidently wrong**, which is worse than not answering:
+**Corpus contamination.** The index included `eval/`, so the agent retrieved
+the benchmark instead of the code it asks about — it located the iteration cap
+in `eval/agent_runner.py` rather than in the loop. Excluding `eval/` moved
+success from 0.333 to 0.500, and median run duration from 110 s to 46 s.
 
-- *"Where is the agent's maximum iteration limit enforced?"* → "in the
-  `run_baseline` function of `agent_runner.py`" — that is the benchmark
-  harness, not the agent loop.
-- *"What prevents one user from retrieving another user's code?"* → "Access
-  control is not implemented in the backend." Flatly false, and tested against
-  in three places.
-- *"How is a patch validated before a human sees it?"* → described the approval
-  gate rather than sandbox validation.
+**A metric defect.** `_mentions` required the *full path*, so an answer saying
+"enforced in the `engine.py` file" was scored a miss although it had identified
+the file exactly. That measured citation formatting rather than whether the
+answer was found. Basenames now count, which moved the clean run from 0.500 to
+0.583.
 
-**A limitation of the metric, not only of the model.** For the sandbox network
-question the agent answered "using the `--network none` flag in the Docker run
-command" — substantively correct — but scored as a miss because it named
-neither the file nor `build_command`. The proxy is strict about *citation*, not
-about correctness, and 0.333 therefore understates substantive accuracy
-slightly. It also cannot catch the reverse, which is why the confidently-wrong
-answers above are quoted rather than summarised.
+Both re-scorings were done on the **same stored answers** via
+`--rescore`, not by re-running a nondeterministic model, so the comparison is
+exact. Note the metric fix changed the clean run only: on the contaminated
+index the model named a genuinely wrong file, which no matching rule should
+reward.
 
-**A methodological problem to fix before the next run.** The re-index included
-`eval/`, so the benchmark's own task text is now in the corpus the agent
-searches — which is how it found `agent_runner.py` and mislocated the iteration
-cap there. Future runs should exclude `eval/` from the index or measure against
-a repository that does not contain the benchmark.
+**Unchanged by either correction: tool validity is 1.000.** Across every tool
+call in both runs the model never invented a tool name and never produced
+arguments that failed validation. The milestone-9 guardrails were never needed.
 
-**n = 12, one run per task, no variance estimate.** Small differences are
-noise. The gap that matters here is not small: 0 of 4 on investigation tasks.
+#### What still fails
 
-#### Why milestones 2–4 are paused
+The `max_iterations_exceeded` run spent five iterations repeating `read_file`
+without converging. Two answers remain confidently wrong or evasive, and one is
+substantively right but uncited — the agent explained `--network none`
+correctly while naming no file, which the proxy cannot credit.
 
-ADR-007 permits Stage 2 *"only if measurements show the single agent failing in
-ways specialisation actually addresses."* These measurements show the opposite.
-Specialisation addresses coordination — division of labour, scoped context,
-review. Coordination is the part that already works: perfect tool validity, a
-loop that terminates correctly, traces that record every step. What fails is
-the model's reasoning, and a Manager, Research, Coding, Testing and Review
-agent would all run *the same 3B model*, each contributing its own version of
-the errors above, with handoffs added between them.
+**n = 12, one run per task, no variance estimate.** The lookup/investigation
+gap is three times, which is unlikely to be noise; smaller differences are.
 
-Resolving [ADR-013](adr/ADR-013-cloud-llm-provider.md) is the change that would
-move these numbers. Re-running this benchmark on a stronger model is the first
-thing to do afterwards, and it is now a single command.
+#### Why milestones 2–4 are paused — and how the corrected numbers weaken that
+
+The original recommendation rested on investigation tasks scoring **0.000**:
+the agent looked hopeless at multi-step work either way. The corrected figure
+is **0.250 against 0.750 for lookups**, which is a different and more
+interesting shape. The model is roughly three times better at single-step
+retrieval than at multi-step synthesis.
+
+That is *precisely* the gap a Manager decomposing an investigation into several
+lookups might close — which is an argument **for** Stage 2 that the corrected
+data supports more than the original data did. It should be stated rather than
+buried.
+
+Set against it: the Manager's decomposition is itself a reasoning task run by
+the same model, handoffs add failure modes the current numbers do not measure,
+and tool validity of 1.000 still says coordination is not what is broken.
+
+**The pause therefore stands, but as a closer call than first reported.** The
+honest position is that the corrected baseline makes multi-agent worth
+reconsidering once [ADR-013](adr/ADR-013-cloud-llm-provider.md) is resolved,
+rather than settling it against. Re-running this benchmark on a stronger model
+is one command and should come first either way.
 
 ### Milestone 1 — what was verified
 

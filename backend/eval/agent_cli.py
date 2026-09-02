@@ -25,10 +25,30 @@ from eval.agent_runner import (
     StaleBenchmarkError,
     failures,
     format_baseline,
+    rescore,
     run_baseline,
 )
 
 RESULTS_DIR = Path(__file__).parent / "results"
+
+
+def _rescore(path: Path) -> int:
+    """Re-read a saved report and print it under the current metrics."""
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        print(f"Could not read {path}: {exc}", file=sys.stderr)
+        return 2
+
+    baseline = rescore(payload)
+    print(f"Rescored {path.name} under the current scoring rules\n")
+    print(format_baseline(baseline))
+
+    missed = failures(baseline)
+    print(f"\nStill missing the expected file or symbol: {len(missed)} run(s)")
+    for result in missed:
+        print(f"  {result.id}  {result.task[:66]}")
+    return 0
 
 
 def main() -> int:
@@ -52,7 +72,19 @@ def main() -> int:
     )
     parser.add_argument("--max-iterations", type=int, default=6)
     parser.add_argument("--no-save", action="store_true")
+    parser.add_argument(
+        "--rescore",
+        type=Path,
+        help=(
+            "recompute a saved report under the current scoring rules instead "
+            "of running the agent, so a metric fix can be compared on the same "
+            "answers rather than on a second run of a nondeterministic model"
+        ),
+    )
     args = parser.parse_args()
+
+    if args.rescore is not None:
+        return _rescore(args.rescore)
 
     settings = get_settings()
 

@@ -105,14 +105,26 @@ def assert_labels_are_current(session: Session, repository_id: uuid.UUID) -> Non
 def _mentions(answer: str, needles: frozenset[str]) -> bool:
     """Whether the answer names any of ``needles``.
 
-    Matched on word boundaries so ``search`` does not match ``research``, and
-    path separators are normalised because a model may write either slash.
+    Symbols match on word boundaries, so ``search`` is not satisfied by
+    ``research``. Paths match either in full or by **basename**: an answer
+    saying "in the `engine.py` file" has identified
+    ``backend/app/agent/engine.py`` as surely as one quoting the whole path,
+    and demanding the full path measured citation formatting rather than
+    whether the answer was found.
+
+    The basename rule is deliberately generous and would over-credit a generic
+    name such as ``__init__.py``. No label uses one; if that changes, the
+    labels are what to fix, because narrowing this rule again would bring back
+    the formatting bias.
     """
     haystack = answer.replace("\\", "/").lower()
     for needle in needles:
         token = needle.replace("\\", "/").lower()
         if "/" in token or "." in token:
             if token in haystack:
+                return True
+            basename = token.rsplit("/", 1)[-1]
+            if basename and basename in haystack:
                 return True
         elif re.search(rf"\b{re.escape(token)}\b", haystack):
             return True
@@ -299,6 +311,44 @@ def failures(baseline: AgentBaseline) -> list[TaskResult]:
     return [result for result in baseline.results if not result.hit]
 
 
+def rescore(payload: dict[str, Any]) -> AgentBaseline:
+    """Recompute a saved report's metrics under the current scoring rules.
+
+    A metric definition sometimes turns out to be wrong -- the first version of
+    ``_mentions`` demanded a full path, so an answer naming ``engine.py`` was
+    scored as a miss. Fixing that must not mean re-running 12 agent tasks, and
+    more importantly the old and new numbers should be comparable on *the same
+    answers* rather than on two different runs of a nondeterministic model.
+
+    The stored answers are the evidence; this re-reads them.
+    """
+    lookup = {task.id: task for task in AGENT_BENCHMARK}
+
+    baseline = AgentBaseline(
+        model=str(payload["model"]),
+        repository=str(payload["repository"]),
+        commit=payload.get("commit"),
+        task_count=int(payload["task_count"]),
+        repeats=int(payload["repeats"]),
+        max_iterations=int(payload["max_iterations"]),
+    )
+
+    for raw in payload["results"]:
+        task = lookup.get(str(raw["id"]))
+        if task is None:
+            # A task removed from the benchmark since the report was written.
+            # Skipped rather than guessed at, and the count reflects it.
+            continue
+        answer = raw.get("answer") or ""
+        result = TaskResult(**raw)
+        result.hit = _mentions(answer, task.expected_files | task.expected_symbols)
+        result.named_symbol = _mentions(answer, task.expected_symbols)
+        baseline.results.append(result)
+
+    _aggregate(baseline)
+    return baseline
+
+
 __all__ = [
     "AgentBaseline",
     "AgentStatus",
@@ -307,6 +357,7 @@ __all__ = [
     "assert_labels_are_current",
     "failures",
     "format_baseline",
+    "rescore",
     "run_baseline",
     "run_task",
 ]

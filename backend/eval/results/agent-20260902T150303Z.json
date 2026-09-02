@@ -1,0 +1,278 @@
+{
+  "model": "qwen2.5-coder:3b",
+  "repository": "Faijur1/AI-software-engineering-platform",
+  "commit": "f25c78a3ae6b6dd42e9baeb3903de821f189b482",
+  "task_count": 12,
+  "repeats": 1,
+  "max_iterations": 6,
+  "success_rate": 0.5,
+  "symbol_rate": 0.4166666666666667,
+  "tool_validity": 1.0,
+  "reasonable_tool_rate": 0.75,
+  "mean_iterations": 3.1666666666666665,
+  "median_duration_s": 46.5,
+  "status_counts": {
+    "succeeded": 11,
+    "max_iterations_exceeded": 1
+  },
+  "by_shape": {
+    "lookup": {
+      "count": 8.0,
+      "success_rate": 0.625,
+      "symbol_rate": 0.5,
+      "mean_iterations": 3.25
+    },
+    "investigation": {
+      "count": 4.0,
+      "success_rate": 0.25,
+      "symbol_rate": 0.25,
+      "mean_iterations": 3.0
+    }
+  },
+  "results": [
+    {
+      "id": "a-01",
+      "task": "Which function handles the GitHub OAuth callback, and in which file?",
+      "shape": "lookup",
+      "status": "succeeded",
+      "iterations": 2,
+      "duration_s": 44.6,
+      "answer": "backend/app/routes/auth.py",
+      "hit": true,
+      "named_symbol": false,
+      "tool_calls": 1,
+      "tools_succeeded": 1,
+      "tools_rejected": 0,
+      "tools_failed": 0,
+      "tools_used": [
+        "search_code"
+      ],
+      "tools_reasonable": true
+    },
+    {
+      "id": "a-02",
+      "task": "Where are GitHub access tokens encrypted before being stored?",
+      "shape": "lookup",
+      "status": "succeeded",
+      "iterations": 2,
+      "duration_s": 37.9,
+      "answer": "The access tokens are encrypted in the backend/app/core/security.py file, specifically in the `encrypt_token` and `decrypt_token` functions.",
+      "hit": true,
+      "named_symbol": true,
+      "tool_calls": 1,
+      "tools_succeeded": 1,
+      "tools_rejected": 0,
+      "tools_failed": 0,
+      "tools_used": [
+        "search_code"
+      ],
+      "tools_reasonable": true
+    },
+    {
+      "id": "a-03",
+      "task": "Which function splits a source file into chunks?",
+      "shape": "lookup",
+      "status": "succeeded",
+      "iterations": 3,
+      "duration_s": 41.6,
+      "answer": "chunk_source",
+      "hit": true,
+      "named_symbol": true,
+      "tool_calls": 2,
+      "tools_succeeded": 2,
+      "tools_rejected": 0,
+      "tools_failed": 0,
+      "tools_used": [
+        "search_code",
+        "search_symbol"
+      ],
+      "tools_reasonable": true
+    },
+    {
+      "id": "a-04",
+      "task": "What stops secret files such as .env from being indexed?",
+      "shape": "lookup",
+      "status": "succeeded",
+      "iterations": 3,
+      "duration_s": 69.4,
+      "answer": "The .env file is ignored by the .gitignore files in the backend and frontend directories. This is indicated by the lines in the .gitignore files that start with '# Secrets' and list .env as an ignored file. This prevents the .env file from being tracked by version control and thus prevents it from being indexed.",
+      "hit": false,
+      "named_symbol": false,
+      "tool_calls": 2,
+      "tools_succeeded": 2,
+      "tools_rejected": 0,
+      "tools_failed": 0,
+      "tools_used": [
+        "search_code",
+        "search_code"
+      ],
+      "tools_reasonable": true
+    },
+    {
+      "id": "a-05",
+      "task": "Which function merges the vector and keyword search results?",
+      "shape": "lookup",
+      "status": "succeeded",
+      "iterations": 5,
+      "duration_s": 94.1,
+      "answer": "retrieve",
+      "hit": false,
+      "named_symbol": false,
+      "tool_calls": 4,
+      "tools_succeeded": 4,
+      "tools_rejected": 0,
+      "tools_failed": 0,
+      "tools_used": [
+        "search_code",
+        "read_file",
+        "search_symbol",
+        "search_symbol"
+      ],
+      "tools_reasonable": false
+    },
+    {
+      "id": "a-06",
+      "task": "Which function decides whether a file is source, test or documentation?",
+      "shape": "lookup",
+      "status": "succeeded",
+      "iterations": 3,
+      "duration_s": 52.2,
+      "answer": "The function `classify_role` in `backend/app/rag/roles.py` determines the type of file based on its path and extension.",
+      "hit": true,
+      "named_symbol": true,
+      "tool_calls": 2,
+      "tools_succeeded": 2,
+      "tools_rejected": 0,
+      "tools_failed": 0,
+      "tools_used": [
+        "search_code",
+        "read_file"
+      ],
+      "tools_reasonable": false
+    },
+    {
+      "id": "a-07",
+      "task": "Where is the agent's maximum iteration limit enforced?",
+      "shape": "lookup",
+      "status": "succeeded",
+      "iterations": 3,
+      "duration_s": 48.4,
+      "answer": "The maximum iteration limit is enforced in the `engine.py` file, specifically in the `DEFAULT_MAX_ITERATIONS` variable, which is set to 8.",
+      "hit": false,
+      "named_symbol": false,
+      "tool_calls": 2,
+      "tools_succeeded": 2,
+      "tools_rejected": 0,
+      "tools_failed": 0,
+      "tools_used": [
+        "search_code",
+        "read_file"
+      ],
+      "tools_reasonable": false
+    },
+    {
+      "id": "a-08",
+      "task": "Which function checks that a tool's path argument stays inside the workspace?",
+      "shape": "lookup",
+      "status": "succeeded",
+      "iterations": 5,
+      "duration_s": 66.5,
+      "answer": "resolve_in_workspace",
+      "hit": true,
+      "named_symbol": true,
+      "tool_calls": 4,
+      "tools_succeeded": 4,
+      "tools_rejected": 0,
+      "tools_failed": 0,
+      "tools_used": [
+        "search_symbol",
+        "search_code",
+        "search_symbol",
+        "search_symbol"
+      ],
+      "tools_reasonable": true
+    },
+    {
+      "id": "a-09",
+      "task": "How does the sandbox stop code it runs from reaching the network? Name the file and the mechanism.",
+      "shape": "investigation",
+      "status": "succeeded",
+      "iterations": 2,
+      "duration_s": 30.2,
+      "answer": "The sandbox stops code from reaching the network by using the `--network none` flag in the Docker run command.",
+      "hit": false,
+      "named_symbol": false,
+      "tool_calls": 1,
+      "tools_succeeded": 1,
+      "tools_rejected": 0,
+      "tools_failed": 0,
+      "tools_used": [
+        "search_code"
+      ],
+      "tools_reasonable": true
+    },
+    {
+      "id": "a-10",
+      "task": "How does re-indexing avoid re-embedding chunks that have not changed?",
+      "shape": "investigation",
+      "status": "max_iterations_exceeded",
+      "iterations": 6,
+      "duration_s": 103.5,
+      "answer": null,
+      "hit": false,
+      "named_symbol": false,
+      "tool_calls": 6,
+      "tools_succeeded": 6,
+      "tools_rejected": 0,
+      "tools_failed": 0,
+      "tools_used": [
+        "search_code",
+        "read_file",
+        "read_file",
+        "read_file",
+        "read_file",
+        "read_file"
+      ],
+      "tools_reasonable": true
+    },
+    {
+      "id": "a-11",
+      "task": "How is a proposed patch validated before a human sees it?",
+      "shape": "investigation",
+      "status": "succeeded",
+      "iterations": 2,
+      "duration_s": 36.3,
+      "answer": "The patch validation process is described in the `validate_patch` function in `backend/app/agent/patches.py`. This function applies the patch to a copy of the workspace and runs tests to ensure the patch is valid.",
+      "hit": true,
+      "named_symbol": true,
+      "tool_calls": 1,
+      "tools_succeeded": 1,
+      "tools_rejected": 0,
+      "tools_failed": 0,
+      "tools_used": [
+        "search_code"
+      ],
+      "tools_reasonable": true
+    },
+    {
+      "id": "a-12",
+      "task": "What prevents one user from retrieving another user's code?",
+      "shape": "investigation",
+      "status": "succeeded",
+      "iterations": 2,
+      "duration_s": 38.1,
+      "answer": "The search_code tool did not provide enough information to determine why one user cannot retrieve another user's code. Further investigation is needed.",
+      "hit": false,
+      "named_symbol": false,
+      "tool_calls": 1,
+      "tools_succeeded": 1,
+      "tools_rejected": 0,
+      "tools_failed": 0,
+      "tools_used": [
+        "search_code"
+      ],
+      "tools_reasonable": true
+    }
+  ],
+  "generated_at": "2026-09-02T15:03:03.942104+00:00"
+}
