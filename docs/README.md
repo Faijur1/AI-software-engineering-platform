@@ -27,7 +27,7 @@ planned. Documents describing later milestones mark unbuilt sections as
 | 4 | Embeddings + pgvector storage, incremental re-indexing | ✅ **Done — verified** |
 | 5 | Hybrid retrieval (vector + full-text), merge, dedupe | ✅ **Done — verified** |
 | 6 | Evaluation harness, labelled benchmark, Recall@K / Precision@K | ✅ **Done — verified** |
-| 7 | Reranking + chat answers with citations | ⚠️ **Partial — see below** |
+| 7 | Reranking + chat answers with citations | ✅ **Done on Gemini** / ⚠️ partial on the local model |
 | 8 | RAG inspector UI | ✅ **Done — verified** |
 | 9 | Agent loop, tools, Docker sandbox, patch proposal + diff viewer | ⚠️ **Built — model-limited** |
 
@@ -829,3 +829,46 @@ against a real call and a real failure; the key appears nowhere in the output.
 repository choose whether its content may leave the machine. What exists is one
 global switch, so enabling Gemini sends retrieved repository content to Google
 for every repository.
+
+---
+
+## Milestone 7, revisited: resolved on Gemini, still partial locally
+
+Milestone 7 was recorded as partial because answers were not trustworthy enough
+to cite. The pipeline was never the problem, and swapping only the model settles
+which half was at fault.
+
+| | `qwen2.5-coder:3b` | `gemini-3.6-flash` |
+| --- | --- | --- |
+| Cited at least one source | 1 of 3 | **3 of 3** |
+| Mean citation coverage | 0.167 | **0.933** |
+| Cited numbers all valid | yes | yes |
+| Off-topic control | repeats a documented fabrication as fact | declines and explains the source |
+
+Day-to-day use on `gemini-3.5-flash` shows around 0.8 coverage with proper
+markers, consistent with the measured figure on `gemini-3.6-flash`.
+
+**The claims were checked, not just the formatting.** All three substantive
+answers were read against the code they describe: `classify` /
+`is_secret_path` / `SkipReason.secret` for the secret-file question, Fernet plus
+the `github_token_encrypted` column for token storage, and `max_iterations` with
+`max_iterations_exceeded` for the agent's bound. Each was correct, including a
+specific numeric claim — that `DEFAULT_MAX_ITERATIONS` is 8 — which is right
+(`app/agent/engine.py:57`; the eval harness keeps its own tighter cap of 6, which
+is a different constant and not a contradiction).
+
+That is the same hand-verification milestone 7 used to reach the opposite
+conclusion about 3b, so the comparison is like for like.
+
+**So the status is split rather than closed.** Milestone 7 is **done when
+`LLM_PROVIDER=gemini`** and remains **partial on the local model**, which still
+misreads its own sources and repeats a documented fabrication as fact. The
+milestone's requirements are met by the system as configured, not by every
+configuration of it.
+
+**What is still not claimed.** Groundedness is not measured. Coverage counts
+sentences carrying a citation, and a fabricated claim with a valid source number
+scores perfectly. Three answers verified by hand is evidence, not a metric, and
+`n=3` on one run at that. Judging groundedness automatically needs a judge, and
+an unvalidated judge would be a number with nothing behind it — so it stays
+unimplemented and unclaimed, exactly as before.
