@@ -97,11 +97,25 @@ asked to read a file with no workspace mounted, was refused, and chose
 Agent metrics, measured not asserted: task success rate, tool selection
 accuracy, iteration count, failure rate, test pass rate, execution latency.
 
-**Not yet measured.** There is no agent benchmark, and building one against a
-model this weak would measure the model rather than the system. The retrieval
-benchmark (milestone 6) exists because retrieval quality was worth measuring at
-this stage; agent metrics are worth measuring once a model that can follow the
-protocol is available — see [ADR-013](adr/ADR-013-cloud-llm-provider.md).
+    python -m eval.agent_cli --workspace <checkout>
 
-These will form the Stage 1 baseline. Stage 2's multi-agent split is justified
-only if it beats that baseline (ADR-007).
+12 labelled tasks about this codebase, each with the file and symbol that
+answers it, split between two shapes: `lookup`, where one search should
+suffice, and `investigation`, where several tool calls are the *correct*
+behaviour. Iteration count is only interpretable against that split, so it is
+reported per shape rather than as one average.
+
+**Success is a mechanical proxy** and is labelled as one. It asks whether the
+answer named the expected file or symbol; it cannot tell whether the
+explanation is right. Milestone 7 showed those come apart — an answer named
+`filters.py` correctly while attributing the mechanism to the wrong symbol. A
+stricter second reading is reported beside it: whether the expected *symbol*
+was named, not merely the file around it. Nothing here scores the explanation,
+because that needs a judge and an unvalidated judge is a number with nothing
+behind it.
+
+Tool-selection accuracy is defined mechanically too: a rejected call — a tool
+that does not exist, or arguments that fail validation — is a wrong choice.
+
+This is the Stage 1 baseline ADR-007 requires. Stage 2's multi-agent split is
+justified only if it beats it.

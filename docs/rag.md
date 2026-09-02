@@ -48,6 +48,13 @@ repository can link to `/etc` or to itself.
 Every skip is counted by reason. A spike in `secret` or `not_utf8` is how a
 filtering bug becomes visible instead of silently shrinking the index.
 
+One exclusion is **not** implemented and should be, when a benchmark is run
+against the repository that contains it: `eval/` holds the labelled task text,
+so indexing it lets the agent retrieve the benchmark instead of the code the
+benchmark asks about. This was observed in the Stage 1 agent baseline — the
+agent located the iteration cap in `eval/agent_runner.py` rather than in the
+loop.
+
 ### Chunking
 
 Chunks are logical units — function, method, class, module-level block — not
