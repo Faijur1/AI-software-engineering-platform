@@ -91,7 +91,11 @@ jobs:
         run: alembic check
 
       - name: Integration tests
-        run: pytest -q -m integration
+        # "and not llm" is load-bearing. A test carrying both markers -- its
+        # file marks integration, the test itself marks llm -- is selected by
+        # a bare "-m integration", so the model tier would leak into a job that
+        # has no model.
+        run: pytest -q -m "integration and not llm"
 
   sandbox:
     name: Sandbox
