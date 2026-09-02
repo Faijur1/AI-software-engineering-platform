@@ -41,8 +41,9 @@ export default async function Home({ searchParams }: PageProps) {
         <div>
           <h1 className="text-2xl font-semibold">AI Software Engineering Platform</h1>
           <p className="mt-2 text-sm text-black/60 dark:text-white/60">
-            Stage 1 — connect a repository, index it, and ask questions about the
-            code.
+            Connect a repository, index it, and ask questions about the code —
+            with citations back to the source, and an agent that investigates
+            inside a sandbox.
           </p>
         </div>
         {user && <UserMenu user={user} />}
@@ -78,13 +79,38 @@ export default async function Home({ searchParams }: PageProps) {
 
       <section className="mt-10">
         <h2 className="text-sm font-medium text-black/70 dark:text-white/70">
-          Not built yet
+          What&rsquo;s here
         </h2>
-        <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-black/50 dark:text-white/50">
-          <li>Repository indexing and progress (milestones 3–4)</li>
-          <li>Hybrid retrieval, chat and the RAG inspector (milestones 5–8)</li>
-          <li>Agent, sandbox and patch proposals (milestone 9)</li>
+        <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-black/60 dark:text-white/60">
+          <li>
+            Indexing with real progress reported by the worker, never simulated
+          </li>
+          <li>
+            Hybrid retrieval — vector and full-text, fused and reranked — with an
+            inspector showing every candidate and the scores behind its rank
+          </li>
+          <li>
+            Answers cited back to the retrieved code, from a local model or a
+            hosted one, chosen per repository
+          </li>
+          <li>
+            An agent with a hard iteration cap, code-enforced tool permissions,
+            full traces, and patches held behind an approval gate
+          </li>
+          <li>
+            Execution isolated in Docker: no network, read-only root, non-root
+            user, all capabilities dropped
+          </li>
         </ul>
+        {/* The project's posture is that measured limits are stated rather than
+            hidden, so the landing page says so too instead of only listing
+            capabilities. */}
+        <p className="mt-3 text-xs leading-relaxed text-black/50 dark:text-white/50">
+          Retrieval is measured against a held-out question set. Answer quality
+          depends on the model: a small local model cites unreliably, and the
+          agent&rsquo;s decisions are the weakest part. What has been measured,
+          and what has not, is recorded in <code>docs/README.md</code>.
+        </p>
       </section>
     </main>
   );
