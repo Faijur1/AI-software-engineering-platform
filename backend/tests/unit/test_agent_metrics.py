@@ -78,7 +78,13 @@ def test_tool_validity_counts_rejections_as_wrong_choices() -> None:
     """A rejected call is a tool that does not exist, or arguments that do not
     validate. Both are selection errors."""
     baseline = AgentBaseline(
-        model="m", repository="r", commit=None, task_count=1, repeats=1, max_iterations=6
+        model="m",
+        provider="test",
+        repository="r",
+        commit=None,
+        task_count=1,
+        repeats=1,
+        max_iterations=6,
     )
     baseline.results = [
         _result(tool_calls=4, tools_succeeded=3, tools_rejected=1),
@@ -91,7 +97,13 @@ def test_tool_validity_counts_rejections_as_wrong_choices() -> None:
 
 def test_no_tool_calls_scores_zero_validity_rather_than_dividing_by_zero() -> None:
     baseline = AgentBaseline(
-        model="m", repository="r", commit=None, task_count=1, repeats=1, max_iterations=6
+        model="m",
+        provider="test",
+        repository="r",
+        commit=None,
+        task_count=1,
+        repeats=1,
+        max_iterations=6,
     )
     baseline.results = [_result()]
 
@@ -104,7 +116,13 @@ def test_success_and_symbol_rates_are_reported_separately() -> None:
     """Naming the file is a weaker claim than naming the symbol, and milestone
     7 showed the two come apart."""
     baseline = AgentBaseline(
-        model="m", repository="r", commit=None, task_count=2, repeats=1, max_iterations=6
+        model="m",
+        provider="test",
+        repository="r",
+        commit=None,
+        task_count=2,
+        repeats=1,
+        max_iterations=6,
     )
     baseline.results = [
         _result(hit=True, named_symbol=True),
@@ -120,7 +138,13 @@ def test_success_and_symbol_rates_are_reported_separately() -> None:
 def test_results_are_broken_down_by_task_shape() -> None:
     """Iteration count means different things for a lookup and an investigation."""
     baseline = AgentBaseline(
-        model="m", repository="r", commit=None, task_count=2, repeats=1, max_iterations=6
+        model="m",
+        provider="test",
+        repository="r",
+        commit=None,
+        task_count=2,
+        repeats=1,
+        max_iterations=6,
     )
     baseline.results = [
         _result(shape="lookup", iterations=1, hit=True),
@@ -136,7 +160,13 @@ def test_results_are_broken_down_by_task_shape() -> None:
 def test_terminal_statuses_are_counted_separately() -> None:
     """max_iterations_exceeded is not a failure and must not be merged into one."""
     baseline = AgentBaseline(
-        model="m", repository="r", commit=None, task_count=3, repeats=1, max_iterations=6
+        model="m",
+        provider="test",
+        repository="r",
+        commit=None,
+        task_count=3,
+        repeats=1,
+        max_iterations=6,
     )
     baseline.results = [
         _result(status="succeeded"),

@@ -65,7 +65,12 @@ class TaskResult:
 
 @dataclass
 class AgentBaseline:
+    # Model as actually used. Taken from the resolved provider rather than
+    # from settings.llm_model, which names the *Ollama* model whatever provider
+    # is configured -- a run against Gemini was saved labelled
+    # "qwen2.5-coder:3b", which is worse than carrying no label at all.
     model: str
+    provider: str
     repository: str
     commit: str | None
     task_count: int
@@ -202,6 +207,7 @@ def run_baseline(
     repository_name: str,
     commit: str | None,
     model: str,
+    provider: str = "ollama",
     workspace: Path | None = None,
     max_iterations: int = DEFAULT_MAX_ITERATIONS,
     repeats: int = 1,
@@ -214,6 +220,7 @@ def run_baseline(
 
     baseline = AgentBaseline(
         model=model,
+        provider=provider,
         repository=repository_name,
         commit=commit,
         task_count=len(selected),
@@ -276,6 +283,7 @@ def _aggregate(baseline: AgentBaseline) -> None:
 def format_baseline(baseline: AgentBaseline) -> str:
     """Render the baseline as plain text."""
     lines: list[str] = []
+    lines.append(f"Provider       : {baseline.provider or '?'}")
     lines.append(f"Model          : {baseline.model}")
     lines.append(f"Repository     : {baseline.repository}")
     lines.append(f"Commit         : {(baseline.commit or '?')[:12]}")
@@ -326,6 +334,7 @@ def rescore(payload: dict[str, Any]) -> AgentBaseline:
 
     baseline = AgentBaseline(
         model=str(payload["model"]),
+        provider=str(payload.get("provider", "")),
         repository=str(payload["repository"]),
         commit=payload.get("commit"),
         task_count=int(payload["task_count"]),

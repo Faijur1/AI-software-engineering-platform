@@ -85,3 +85,28 @@ def _cosine(a: list[float], b: list[float]) -> float:
     norm_a = sum(x * x for x in a) ** 0.5
     norm_b = sum(y * y for y in b) ** 0.5
     return float(dot / (norm_a * norm_b))
+
+
+@pytest.mark.llm
+def test_the_configured_provider_answers_end_to_end() -> None:
+    """Whatever LLM_PROVIDER names, `complete` returns a usable answer.
+
+    Provider-agnostic on purpose: this asserts the seam works, not that a
+    particular vendor is configured. It is the only test that spends money when
+    the provider is a paid one, which is why it is one call.
+    """
+    from app.llm.chat import complete
+    from app.llm.providers import get_chat_provider
+
+    provider = get_chat_provider()
+    completion = complete(
+        system="Answer with exactly one word.",
+        user="What colour is a clear midday sky? Answer with one word.",
+        temperature=0.0,
+    )
+
+    assert completion.answer.strip()
+    assert completion.model
+    assert completion.duration_ms >= 0
+    # The provider must not silently be something else.
+    assert provider.name in ("ollama", "gemini")

@@ -1,0 +1,184 @@
+{
+  "kind": "citations",
+  "generated_at": "2026-09-02T18:28:40.093425+00:00",
+  "results": [
+    {
+      "id": "c-01",
+      "question": "What stops secret files from being indexed?",
+      "provider": "ollama",
+      "model": "qwen2.5-coder:3b",
+      "coverage": 0.5,
+      "citations_valid": true,
+      "cited_indices": [
+        3
+      ],
+      "invalid_indices": [],
+      "sources_offered": 6,
+      "duration_ms": 38344,
+      "answer": "Secret files are stopped from being indexed by the `classify` function in `filters.py` [3]. The function checks if a file is secret using the `is_secret_path` function and returns a `FilterDecision` with the reason `SkipReason.secret` if it is.",
+      "should_refuse": false,
+      "cited_anything": true,
+      "asserted_off_topic": false
+    },
+    {
+      "id": "c-02",
+      "question": "How are GitHub access tokens protected when stored?",
+      "provider": "ollama",
+      "model": "qwen2.5-coder:3b",
+      "coverage": 0.0,
+      "citations_valid": true,
+      "cited_indices": [],
+      "invalid_indices": [],
+      "sources_offered": 6,
+      "duration_ms": 20249,
+      "answer": "GitHub access tokens are protected when stored by being Fernet-encrypted using the `TOKEN_ENCRYPTION_KEY` secret. This ensures that even if a database dump is obtained, the tokens remain unreadable without the encryption key. The `TOKEN_ENCRYPTION_KEY` is deliberately not shared with other systems to prevent unauthorized access to GitHub credentials.",
+      "should_refuse": false,
+      "cited_anything": false,
+      "asserted_off_topic": false
+    },
+    {
+      "id": "c-03",
+      "question": "How does the agent stop itself running forever?",
+      "provider": "ollama",
+      "model": "qwen2.5-coder:3b",
+      "coverage": 0.0,
+      "citations_valid": true,
+      "cited_indices": [],
+      "invalid_indices": [],
+      "sources_offered": 6,
+      "duration_ms": 30164,
+      "answer": "The agent stops itself running forever by setting the `status` of the `AgentRun` to `AgentStatus.failed` and updating the `error` field with a message indicating that the repository was disconnected before the run started. This is done in the `_run` function in `backend/app/workers/agent.py` at line 47.",
+      "should_refuse": false,
+      "cited_anything": false,
+      "asserted_off_topic": false
+    },
+    {
+      "id": "c-04",
+      "question": "What is the airspeed velocity of an unladen swallow?",
+      "provider": "ollama",
+      "model": "qwen2.5-coder:3b",
+      "coverage": 0.5,
+      "citations_valid": true,
+      "cited_indices": [
+        4
+      ],
+      "invalid_indices": [],
+      "sources_offered": 6,
+      "duration_ms": 20717,
+      "answer": "The airspeed velocity of an unladen swallow is approximately 47 mph. This information is provided in the source code at [4].",
+      "should_refuse": true,
+      "cited_anything": true,
+      "asserted_off_topic": false
+    },
+    {
+      "id": "c-05",
+      "question": "What is the capital city of Mongolia?",
+      "provider": "ollama",
+      "model": "qwen2.5-coder:3b",
+      "coverage": 0.0,
+      "citations_valid": true,
+      "cited_indices": [],
+      "invalid_indices": [],
+      "sources_offered": 6,
+      "duration_ms": 6580,
+      "answer": "I'm sorry, but I cannot answer this question. The information about the capital city of Mongolia is not provided in the given sources.",
+      "should_refuse": true,
+      "cited_anything": false,
+      "asserted_off_topic": false
+    },
+    {
+      "id": "c-01",
+      "question": "What stops secret files from being indexed?",
+      "provider": "gemini",
+      "model": "gemini-3.6-flash",
+      "coverage": 1.0,
+      "citations_valid": true,
+      "cited_indices": [
+        1,
+        2,
+        4
+      ],
+      "invalid_indices": [],
+      "sources_offered": 6,
+      "duration_ms": 32502,
+      "answer": "Secret files are prevented from being indexed by the `classify` function in `backend/app/ingestion/filters.py`, which performs a security check using `is_secret_path(path)` [2]. \n\nKey details of this mechanism:\n* **Checked First**: The secret check runs before any convenience checks (e.g., directory or size filters) to guarantee secrets are never missed due to reordering [2].\n* **Explicit Skip**: If `is_secret_path(path)` is true, `classify` returns a decision excluding the file with `SkipReason.secret` [2], [4].\n* **Security Control**: This prevents secret files from being embedded, reaching the LLM, or appearing in citations [1].",
+      "should_refuse": false,
+      "cited_anything": true,
+      "asserted_off_topic": false
+    },
+    {
+      "id": "c-02",
+      "question": "How are GitHub access tokens protected when stored?",
+      "provider": "gemini",
+      "model": "gemini-3.6-flash",
+      "coverage": 1.0,
+      "citations_valid": true,
+      "cited_indices": [
+        2,
+        3,
+        5
+      ],
+      "invalid_indices": [],
+      "sources_offered": 6,
+      "duration_ms": 43603,
+      "answer": "GitHub access tokens are protected in the following ways:\n\n* **Fernet Encryption:** Tokens are Fernet-encrypted before being written to the database using `TOKEN_ENCRYPTION_KEY` [2, 3, 5].\n* **Database Storage:** They are stored in the encrypted `github_token_encrypted` column on the `users` table [5].\n* **Handling Restrictions:** Tokens are never stored in plaintext, never logged, and never returned by any endpoint [5].",
+      "should_refuse": false,
+      "cited_anything": true,
+      "asserted_off_topic": false
+    },
+    {
+      "id": "c-03",
+      "question": "How does the agent stop itself running forever?",
+      "provider": "gemini",
+      "model": "gemini-3.6-flash",
+      "coverage": 0.8,
+      "citations_valid": true,
+      "cited_indices": [
+        1,
+        5,
+        6
+      ],
+      "invalid_indices": [],
+      "sources_offered": 6,
+      "duration_ms": 7479,
+      "answer": "The agent stops itself from running forever in two ways:\n\n1. **Hard Iteration Cap:** The agent loop is bounded by a strict maximum number of iterations (`agent_run.max_iterations`) [1][6]. By default, `DEFAULT_MAX_ITERATIONS` is set to 8 [5]. Once this cap is reached, the run terminates with `max_iterations_exceeded` and returns its partial findings rather than failing or continuing endlessly [1][5].\n2. **Early Termination on Completion:** During each iteration, if the agent determines it has enough information to answer, it submits a final answer payload (`action.is_final`), completing the run successfully (`AgentStatus.succeeded`) and exiting the loop [1][5].",
+      "should_refuse": false,
+      "cited_anything": true,
+      "asserted_off_topic": false
+    },
+    {
+      "id": "c-04",
+      "question": "What is the airspeed velocity of an unladen swallow?",
+      "provider": "gemini",
+      "model": "gemini-3.6-flash",
+      "coverage": 0.75,
+      "citations_valid": true,
+      "cited_indices": [
+        1
+      ],
+      "invalid_indices": [],
+      "sources_offered": 6,
+      "duration_ms": 152540,
+      "answer": "Based on the provided sources, this is an off-topic question that is not related to the codebase [1]. \n\nDuring benchmark testing described in the documentation:\n* The `qwen2.5-coder:1.5b` model incorrectly fabricated an answer (\"45 mph\" / \"approximately 47 mph\") [1].\n* The `qwen2.5-coder:3b` model refused to answer, stating: *\"I cannot answer this question. It is not related to the codebase provided.\"* [1]",
+      "should_refuse": true,
+      "cited_anything": true,
+      "asserted_off_topic": false
+    },
+    {
+      "id": "c-05",
+      "question": "What is the capital city of Mongolia?",
+      "provider": "gemini",
+      "model": "gemini-3.6-flash",
+      "coverage": 0.0,
+      "citations_valid": true,
+      "cited_indices": [],
+      "invalid_indices": [],
+      "sources_offered": 6,
+      "duration_ms": 3003,
+      "answer": "The provided sources do not contain information about the capital city of Mongolia. To answer this question, I would need documentation or data mentioning general geographical facts or information about Mongolia.",
+      "should_refuse": true,
+      "cited_anything": false,
+      "asserted_off_topic": false
+    }
+  ]
+}

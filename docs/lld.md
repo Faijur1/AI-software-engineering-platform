@@ -26,7 +26,8 @@ backend/
 │   ├── ingestion/              languages, filters, fetcher, discovery, chunker,
 │   │                           embedder, service
 │   ├── rag/                    vector, keyword, fusion, reranker, retriever
-│   ├── llm/                    EmbeddingProvider + Ollama implementation
+│   ├── llm/                    provider interfaces (types.py), Ollama and
+│   │                           Gemini chat providers, embeddings, chat prompt
 │   ├── agent/                  engine, tools, tracing, patches
 │   ├── sandbox/                Docker runner (ADR-006)
 │   ├── queue/                  queue interface + RQ backend (ADR-003)
@@ -99,7 +100,7 @@ the interesting part.
 | `IngestionService` | `ingestion/service.py` — `index_repository` | One entry point, not a class. `clone_repository` became `fetcher.py` fetching a tarball, never a clone (ADR-010) |
 | `Chunker` | `ingestion/chunker.py` — `chunk_source`, `Chunk` | `parse_ast` / `extract_symbols` are internal to tree-sitter chunking; the public surface is one function |
 | `RAGService` | `rag/` — `retrieve`, plus `vector`, `keyword`, `fusion`, `reranker` | `merge_results` became RRF (ADR-011). `generate_citations` lives in `llm/chat.py`, since citations are a property of the answer, not of retrieval |
-| `LLMProvider` | `llm/base.py`, `llm/ollama.py`, `llm/chat.py` — `embed`, `complete`, `answer_question` | Embedding and generation are configured independently on purpose |
+| `LLMProvider` | `llm/types.py` (`ChatProvider`), `llm/ollama_chat.py`, `llm/gemini.py`, `llm/base.py` (`EmbeddingProvider`) | Two protocols, not one: chat is selectable by config (ADR-013), embeddings are not, because stored vectors are only comparable within one model |
 | `AgentEngine` | `agent/engine.py` — `run_agent`, `parse_action` | A bounded loop rather than the nine-method lifecycle designed; the cap is the property worth having |
 | `Tool` | `agent/tools.py` — `Tool`, `Permission`, `ToolContext` | Permissions are enforced in code at dispatch, not documented as a convention |
 | `SandboxManager` | `sandbox/runner.py` — `run`, `build_command`, `remove_workspace` | Functions over a class. `build_command` is separate so the security policy can be asserted verbatim in a test |

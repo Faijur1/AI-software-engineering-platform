@@ -48,6 +48,7 @@ from app.agent.tools import (
     invoke,
 )
 from app.agent.tracing import Tracer
+from app.core.errors import ExternalServiceError
 from app.core.logging import get_logger
 from app.models.agent import AgentRun, AgentStatus, ToolRun, ToolStatus
 
@@ -230,7 +231,31 @@ def run_agent(
         session.flush()
         tracer.emit(tracing.ITERATION_STARTED, component="agent", iteration=iteration)
 
-        raw = generate("\n\n".join(transcript))
+        try:
+            raw = generate("\n\n".join(transcript))
+        except ExternalServiceError as exc:
+            # The provider failed after its own retries -- a rate limit, an
+            # outage, a revoked key. The run ends here, but as a recorded
+            # failure with the work so far intact. Raising out of the loop
+            # would take down the worker for a condition that is neither the
+            # run's fault nor permanent, and it destroyed a whole 12-task
+            # benchmark the first time a rate limit was hit.
+            tracer.emit(
+                tracing.AGENT_COMPLETED,
+                component="agent",
+                status="failed",
+                reason="provider_unavailable",
+            )
+            agent_run.status = AgentStatus.failed
+            agent_run.error = exc.message
+            session.flush()
+            return AgentOutcome(
+                status=AgentStatus.failed,
+                answer=None,
+                iterations=iteration,
+                error=exc.message,
+            )
+
         action = parse_action(raw)
 
         if action.parse_error is not None:

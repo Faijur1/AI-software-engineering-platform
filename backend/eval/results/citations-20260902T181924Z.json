@@ -1,0 +1,145 @@
+{
+  "kind": "citations",
+  "generated_at": "2026-09-02T18:19:24.713260+00:00",
+  "results": [
+    {
+      "id": "c-01",
+      "question": "What stops secret files from being indexed?",
+      "provider": "ollama",
+      "model": "qwen2.5-coder:3b",
+      "coverage": 0.5,
+      "citations_valid": true,
+      "cited_indices": [
+        3
+      ],
+      "invalid_indices": [],
+      "sources_offered": 6,
+      "duration_ms": 10756,
+      "answer": "Secret files are stopped from being indexed by the `classify` function in `filters.py` [3]. The function checks if a file is a secret using the `is_secret_path` function and returns a `FilterDecision` with the reason `SkipReason.secret` if it is.",
+      "should_refuse": false,
+      "cited_anything": true,
+      "asserted_off_topic": false
+    },
+    {
+      "id": "c-02",
+      "question": "How are GitHub access tokens protected when stored?",
+      "provider": "ollama",
+      "model": "qwen2.5-coder:3b",
+      "coverage": 0.0,
+      "citations_valid": true,
+      "cited_indices": [],
+      "invalid_indices": [],
+      "sources_offered": 6,
+      "duration_ms": 17252,
+      "answer": "GitHub access tokens are protected when stored by being Fernet-encrypted using the `TOKEN_ENCRYPTION_KEY` secret. This ensures that even if a database dump is obtained, the tokens cannot be decrypted and used without the key. The `TOKEN_ENCRYPTION_KEY` is deliberately not shared with other systems to prevent unauthorized access to the tokens.",
+      "should_refuse": false,
+      "cited_anything": false,
+      "asserted_off_topic": false
+    },
+    {
+      "id": "c-03",
+      "question": "How does the agent stop itself running forever?",
+      "provider": "ollama",
+      "model": "qwen2.5-coder:3b",
+      "coverage": 0.0,
+      "citations_valid": true,
+      "cited_indices": [],
+      "invalid_indices": [],
+      "sources_offered": 6,
+      "duration_ms": 23852,
+      "answer": "The agent stops itself running forever by setting the `status` of the `AgentRun` to `AgentStatus.failed` and updating the `error` field with a message indicating that the repository was disconnected before the run started. This is done in the `_run` function, which is called by the `_run_agent_job` function. The `_run` function checks if the `AgentRun` exists and if the `Repository` exists. If either of these checks fails, it sets the `status` to `AgentStatus.failed` and updates the `error` field accordingly.",
+      "should_refuse": false,
+      "cited_anything": false,
+      "asserted_off_topic": false
+    },
+    {
+      "id": "c-04",
+      "question": "What is the airspeed velocity of an unladen swallow?",
+      "provider": "ollama",
+      "model": "qwen2.5-coder:3b",
+      "coverage": 0.5,
+      "citations_valid": true,
+      "cited_indices": [
+        4
+      ],
+      "invalid_indices": [],
+      "sources_offered": 6,
+      "duration_ms": 8036,
+      "answer": "The airspeed velocity of an unladen swallow is approximately 47 mph. This information is provided in the source code at [4].",
+      "should_refuse": true,
+      "cited_anything": true,
+      "asserted_off_topic": true
+    },
+    {
+      "id": "c-05",
+      "question": "What is the capital city of Mongolia?",
+      "provider": "ollama",
+      "model": "qwen2.5-coder:3b",
+      "coverage": 0.0,
+      "citations_valid": true,
+      "cited_indices": [],
+      "invalid_indices": [],
+      "sources_offered": 6,
+      "duration_ms": 10985,
+      "answer": "I'm sorry, but I cannot answer this question. The information about the capital city of Mongolia is not provided in the sources provided.",
+      "should_refuse": true,
+      "cited_anything": false,
+      "asserted_off_topic": false
+    },
+    {
+      "id": "c-01",
+      "question": "What stops secret files from being indexed?",
+      "provider": "gemini",
+      "model": "gemini-3.6-flash",
+      "coverage": 1.0,
+      "citations_valid": true,
+      "cited_indices": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "invalid_indices": [],
+      "sources_offered": 6,
+      "duration_ms": 29679,
+      "answer": "Secret files are prevented from being indexed by the security check `is_secret_path(path)` inside the `classify()` function in `backend/app/ingestion/filters.py` [2]. \n\nKey details of this mechanism:\n* **Executed First:** The secret check runs before all other convenience/noise filter checks to ensure no secret is inadvertently indexed or exposed [2].\n* **Filter Decision:** If `is_secret_path(path)` evaluates to true, `classify()` immediately returns a `FilterDecision` flagging the file with `SkipReason.secret` [2][4].\n* **Policy/Reporting:** Secret exclusions are logged/reported rather than silently skipped so policy decisions remain visible, ensuring secret files are never embedded, sent to the LLM, or cited [1][3].",
+      "should_refuse": false,
+      "cited_anything": true,
+      "asserted_off_topic": false
+    },
+    {
+      "id": "c-04",
+      "question": "What is the airspeed velocity of an unladen swallow?",
+      "provider": "gemini",
+      "model": "gemini-3.6-flash",
+      "coverage": 0.75,
+      "citations_valid": true,
+      "cited_indices": [
+        1
+      ],
+      "invalid_indices": [],
+      "sources_offered": 6,
+      "duration_ms": 5475,
+      "answer": "Based on the provided sources, this is an off-topic question used to test the models during evaluation [1]. \n\nThe sources state that the information is found nowhere in the codebase [1]:\n* `qwen2.5-coder:1.5b` fabricated an answer (inventing \"45 mph\" / \"approximately 47 mph\") [1].\n* `qwen2.5-coder:3b` refused to answer, stating: *\"I cannot answer this question. It is not related to the codebase provided.\"* [1]",
+      "should_refuse": true,
+      "cited_anything": true,
+      "asserted_off_topic": true
+    },
+    {
+      "id": "c-05",
+      "question": "What is the capital city of Mongolia?",
+      "provider": "gemini",
+      "model": "gemini-3.6-flash",
+      "coverage": 0.0,
+      "citations_valid": true,
+      "cited_indices": [],
+      "invalid_indices": [],
+      "sources_offered": 6,
+      "duration_ms": 5960,
+      "answer": "The provided sources do not contain information about the capital city of Mongolia. To answer this question, information or documentation regarding general world geography or Mongolia specifically would be needed.",
+      "should_refuse": true,
+      "cited_anything": false,
+      "asserted_off_topic": false
+    }
+  ]
+}

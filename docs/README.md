@@ -730,3 +730,99 @@ cannot quietly leave the sweep.
 `/health` is exempt from the envelope rule and only that rule: its 503 is a
 report rather than a failure, and a client reads which dependency is down out of
 the body.
+
+---
+
+## A second chat provider, and what it changed
+
+`LLM_PROVIDER` selects between Ollama and Gemini behind one `ChatProvider`
+protocol (ADR-013, now accepted). Chat and the agent loop resolve the provider
+through a single function and neither knows which is configured. Embeddings stay
+on Ollama deliberately: every stored vector records the model that produced it,
+and vectors from different models are not comparable, so moving them means
+re-embedding the corpus as a separate deliberate act.
+
+### Citations: measured, not asserted
+
+Milestone 7 judged this by hand over three questions and wrote the result in
+prose, which could not be re-run. `eval/citation_probe.py` replaces that: every
+provider answers identical questions in one process, so retrieval, context
+assembly and the checker are provably the same and the model is the only
+variable.
+
+| | `qwen2.5-coder:3b` | `gemini-3.6-flash` |
+| --- | --- | --- |
+| Cited at least one source | 1 of 3 | **3 of 3** |
+| Mean citation coverage | 0.167 | **0.933** |
+| All cited numbers exist | yes | yes |
+
+This confirms milestone 7's conclusion by changing only the model: the pipeline
+was sound, the local model was the ceiling.
+
+Coverage is still **not groundedness**. A fabricated claim carrying a valid
+source number scores perfectly here. Judging whether a claim follows from its
+source needs a judge, and an unvalidated judge would be a number with nothing
+behind it, so it remains unimplemented and unclaimed.
+
+### Correcting the record: 3b no longer refuses cleanly
+
+Milestone 7 recorded that `qwen2.5-coder:3b` refuses the off-topic control. It
+does not any more, and the reason is more interesting than the result. This
+document now describes that test and quotes the fabricated "47 mph" while doing
+so, so retrieval hands the model a document *about* the false claim. 3b repeats
+it as fact — *"approximately 47 mph. This information is provided in the source
+code at [4]"* — across three runs. Gemini declines and explains that the source
+is documentation of the test itself.
+
+The control therefore stopped testing refusal and started testing whether a
+model can distinguish a document describing a claim from the claim. It is kept
+for that, with an uncontaminated control added beside it.
+
+### A bug in the new metric, found by reading the answers
+
+The probe's first version scored any control answer that cited a source as a
+fabrication. That is wrong: a *correct* refusal cites — "the sources do not
+answer this, and source [1] is documentation about the test" is the best
+available answer and carries a citation. It flagged Gemini's correct answer as a
+fabrication. Citing and fabricating are unrelated, and the contaminated control
+is no longer auto-scored at all: the distinction between asserting a claim and
+quoting a document about it is a judgement, so the answer is saved in full and
+read.
+
+### The agent comparison has no numbers
+
+Not a small partial result — **none**. The free tier allows **20 requests per
+day, per model**, and one 12-task benchmark sweep needs 30–70. Both attempts
+failed at the first iteration of every task, with no tool ever called, so
+nothing was measured and nothing is reported. The saved report from the first
+attempt was deleted rather than kept: it contained no measurement and, because
+of the bug below, carried the wrong model name.
+
+Three defects were found in the attempt, all of which would have mattered in
+production:
+
+- **A provider error killed the whole run.** One 429 propagated out of the agent
+  loop and aborted twelve tasks. A worker must not die because a rate limit was
+  hit; the run now ends as a recorded failure with its work intact.
+- **The baseline recorded the wrong model.** It took the name from
+  `settings.llm_model` — the *Ollama* setting — whatever provider was in use, so
+  a Gemini run was saved labelled `qwen2.5-coder:3b`. A baseline with a wrong
+  label is worse than one with none, because it reads as authoritative.
+- **Retrying a daily quota spends the budget it waits for.** Every attempt is a
+  billed request, so a four-attempt policy burns a 20-per-day allowance five
+  times faster and still fails; the retries alone exhausted a second model's
+  entire allowance. A per-minute limit clears and is worth retrying, a per-day
+  one does not, and the two are now told apart from the `quotaId` in the error.
+
+### The API key
+
+Held as `SecretStr`, stored only in `.env`, and sent as the `x-goog-api-key`
+**header** — never in a URL. That distinction is the point: `httpx` quotes the
+request URL in its own exception messages, so a key in a query string would
+reach the structured logs the first time a request timed out. Verified live
+against a real call and a real failure; the key appears nowhere in the output.
+
+**Not yet built: per-repository opt-in.** ADR-013 recommended letting each
+repository choose whether its content may leave the machine. What exists is one
+global switch, so enabling Gemini sends retrieved repository content to Google
+for every repository.

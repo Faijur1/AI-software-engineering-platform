@@ -1,8 +1,8 @@
 # ADR-013 — Where answers are generated: local model or cloud LLM
 
-- **Status:** 🟡 **Draft — proposed, not decided.** Written so the options are
-  laid out before the decision is made, not to record one already taken.
-- **Date:** 2026-09-02
+- **Status:** ✅ **Accepted** — option 3, a provider behind an interface, is
+  built and in use for chat. Superseded the draft on 2026-09-03.
+- **Date:** 2026-09-02, decided 2026-09-03
 - **Decision owner:** repository owner
 - **Blocks:** trustworthy cited answers (milestone 7 is recorded as partial)
 
@@ -16,7 +16,7 @@ not, and the reason is the model, not the pipeline.
 
 | | `qwen2.5-coder:1.5b` | `qwen2.5-coder:3b` |
 | --- | --- | --- |
-| Refuses an off-topic question | ❌ invented "45 mph" | ✅ refuses cleanly |
+| Refuses an off-topic question | ❌ invented "45 mph" | ⚠️ see correction below |
 | Cited any source | 0 of 3 questions | 1 of 3 (coverage 0.333) |
 | Factual errors | yes | yes |
 
@@ -140,3 +140,66 @@ Concretely, if chosen:
 - Does the answer change for milestone 9's agent, which will generate far more?
 - Is a bigger *local* model on different hardware preferable to any cloud
   option, given the project's local-first stance?
+
+
+---
+
+## Decision, and what measurement supported it
+
+A `ChatProvider` protocol with two implementations, selected by `LLM_PROVIDER`.
+Chat and the agent loop resolve the provider through one function and neither
+knows which is configured. Embeddings deliberately do **not** move: every stored
+vector records the model that produced it, vectors from different models are not
+comparable, and changing that means re-embedding the corpus as a separate
+deliberate act.
+
+The draft argued from a hand-run of three questions recorded in prose, which
+could not be re-run and so could not be compared against. That gap is closed:
+`eval/citation_probe.py` runs every provider over identical questions in one
+process, so retrieval, context assembly and the citation checker are provably
+the same and the model is the single variable.
+
+| | `qwen2.5-coder:3b` | `gemini-3.6-flash` |
+| --- | --- | --- |
+| Cited at least one source | 1 of 3 | **3 of 3** |
+| Mean citation coverage | 0.167 | **0.933** |
+| All cited numbers exist | yes | yes |
+
+That is the evidence for the decision. It confirms what milestone 7 concluded:
+the pipeline was sound and the local model was the ceiling.
+
+### A correction to the draft's own table
+
+The draft recorded that `qwen2.5-coder:3b` "refuses cleanly" on the off-topic
+control. It no longer does, and the reason is worth keeping. `docs/README.md`
+now documents that very test and quotes the fabricated "47 mph" while describing
+it. Retrieval hands the model a document *about* the false claim, and 3b repeats
+it as fact — "approximately 47 mph. This information is provided in the source
+code at [4]" — reproduced across three runs. Gemini declines and explains what
+the source actually is.
+
+So the original control stopped testing refusal and started testing something
+harder: whether a model can tell a document describing a claim from the claim
+itself. It is kept for that, and an uncontaminated control was added beside it.
+
+### What is not decided here
+
+**Per-repository opt-in is not built.** The recommended option included letting
+each repository choose whether its content may leave the machine; what exists is
+a single global setting. Until that lands, enabling Gemini sends retrieved
+repository content to Google for **every** repository, which is a decision the
+operator makes once rather than per project. `docs/security.md` should be read
+alongside this.
+
+**Cost and quota are unresolved.** The free tier is **20 requests per day, per
+model** — not per minute. That is enough for interactive chat and far too little
+for the agent benchmark, which needs 30–70 calls for one sweep. The agent
+comparison this ADR would have wanted therefore **has no numbers**, and none are
+invented here: every task in both attempts failed on quota at the first
+iteration, with no tool ever called.
+
+A related defect was found and fixed in the process: retrying a 429 spends the
+budget it is waiting for, because each attempt is a billed request. A per-minute
+limit clears and is worth retrying; a per-day one does not, and retrying it
+burned a second model's entire allowance. The provider now tells them apart from
+the `quotaId` in the error details.

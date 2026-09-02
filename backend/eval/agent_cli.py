@@ -16,11 +16,12 @@ from pathlib import Path
 
 from sqlalchemy import select
 
-from app.core.config import get_settings
 from app.core.database import session_scope
 from app.core.errors import ExternalServiceError
 from app.llm.ollama import OllamaEmbedder
+from app.llm.providers import get_chat_provider
 from app.models.repository import Repository
+from eval.agent_benchmark import AGENT_BENCHMARK, TaskShape
 from eval.agent_runner import (
     StaleBenchmarkError,
     failures,
@@ -71,6 +72,16 @@ def main() -> int:
         ),
     )
     parser.add_argument("--max-iterations", type=int, default=6)
+    parser.add_argument(
+        "--shape",
+        choices=[shape.value for shape in TaskShape],
+        help=(
+            "run only tasks of this shape. Exists because a metered provider "
+            "may not have the quota for a full sweep: a partial run reported as "
+            "a partial run is useful, a partial run reported as a baseline is "
+            "not"
+        ),
+    )
     parser.add_argument("--no-save", action="store_true")
     parser.add_argument(
         "--rescore",
@@ -86,7 +97,14 @@ def main() -> int:
     if args.rescore is not None:
         return _rescore(args.rescore)
 
-    settings = get_settings()
+    provider = get_chat_provider()
+
+    selected = list(AGENT_BENCHMARK)
+    if args.shape:
+        selected = [t for t in selected if t.shape.value == args.shape]
+        if not selected:
+            print(f"No tasks with shape {args.shape}.", file=sys.stderr)
+            return 2
 
     # The agent's search tools embed their queries, so the embedding model has
     # to be reachable before anything is worth starting.
@@ -112,10 +130,12 @@ def main() -> int:
                 repository_id=repository.id,
                 repository_name=repository.full_name,
                 commit=repository.current_commit,
-                model=settings.llm_model,
+                model=provider.model_name,
+                provider=provider.name,
                 workspace=args.workspace,
                 max_iterations=args.max_iterations,
                 repeats=args.repeats,
+                tasks=selected,
             )
         except StaleBenchmarkError as exc:
             print(f"Benchmark is stale:\n{exc}", file=sys.stderr)

@@ -77,6 +77,19 @@ class Settings(BaseSettings):
     embedding_dimensions: int = 768
     # Generous: the first request to Ollama loads the model, which took ~23s
     # for nomic-embed-text on a cold start.
+    # Which backend answers chat and drives the agent. Embeddings are not
+    # affected: they stay on Ollama, because every stored vector records the
+    # model that produced it and re-embedding the corpus to change provider is
+    # a separate, deliberate act (ADR-013).
+    llm_provider: Literal["ollama", "gemini"] = "ollama"
+
+    # Sent as a header, never in a URL: query strings end up in proxy logs and
+    # in the text of httpx's own exceptions. SecretStr so it cannot be printed
+    # by accident -- the same treatment as the GitHub client secret.
+    gemini_api_key: SecretStr = SecretStr("")
+    gemini_model: str = "gemini-3.6-flash"
+    gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta"
+
     llm_timeout_seconds: int = 120
     # Chunks per embedding request. Larger batches amortise the round trip;
     # too large and one failure wastes more work and the request can time out.

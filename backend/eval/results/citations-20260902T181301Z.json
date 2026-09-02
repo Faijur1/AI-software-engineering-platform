@@ -1,0 +1,144 @@
+{
+  "kind": "citations",
+  "generated_at": "2026-09-02T18:13:01.951124+00:00",
+  "results": [
+    {
+      "id": "c-01",
+      "question": "What stops secret files from being indexed?",
+      "provider": "ollama",
+      "model": "qwen2.5-coder:3b",
+      "coverage": 0.5,
+      "citations_valid": true,
+      "cited_indices": [
+        3
+      ],
+      "invalid_indices": [],
+      "sources_offered": 6,
+      "duration_ms": 37796,
+      "answer": "Secret files are stopped from being indexed by the `classify` function in `filters.py` [3]. The function checks if a file is a secret using the `is_secret_path` function and returns `FilterDecision(False, SkipReason.secret)` if it is.",
+      "should_refuse": false,
+      "cited_anything": true
+    },
+    {
+      "id": "c-02",
+      "question": "How are GitHub access tokens protected when stored?",
+      "provider": "ollama",
+      "model": "qwen2.5-coder:3b",
+      "coverage": 0.0,
+      "citations_valid": true,
+      "cited_indices": [],
+      "invalid_indices": [],
+      "sources_offered": 6,
+      "duration_ms": 37199,
+      "answer": "GitHub access tokens are protected when stored by being Fernet-encrypted using the `TOKEN_ENCRYPTION_KEY` secret. This ensures that even if a database dump is obtained, the tokens remain unreadable without the encryption key. The `TOKEN_ENCRYPTION_KEY` is deliberately not shared with other systems to prevent unauthorized access to GitHub credentials.",
+      "should_refuse": false,
+      "cited_anything": false
+    },
+    {
+      "id": "c-03",
+      "question": "How does the agent stop itself running forever?",
+      "provider": "ollama",
+      "model": "qwen2.5-coder:3b",
+      "coverage": 0.0,
+      "citations_valid": true,
+      "cited_indices": [],
+      "invalid_indices": [],
+      "sources_offered": 6,
+      "duration_ms": 74720,
+      "answer": "The agent stops itself running forever by setting the `status` of the `AgentRun` to `AgentStatus.failed` and updating the `error` field with a message indicating that the repository was disconnected before the run started. This is done in the `_run` function of the `app/workers/agent.py` file, which is called by the `run_agent_job` function in the same file. The `run_agent_job` function is called by RQ with primitives, since that is what survives serialisation.",
+      "should_refuse": false,
+      "cited_anything": false
+    },
+    {
+      "id": "c-04",
+      "question": "What is the airspeed velocity of an unladen swallow?",
+      "provider": "ollama",
+      "model": "qwen2.5-coder:3b",
+      "coverage": 0.5,
+      "citations_valid": true,
+      "cited_indices": [
+        4
+      ],
+      "invalid_indices": [],
+      "sources_offered": 6,
+      "duration_ms": 44835,
+      "answer": "The airspeed velocity of an unladen swallow is approximately 47 mph. This information is provided in the source code at [4].",
+      "should_refuse": true,
+      "cited_anything": true
+    },
+    {
+      "id": "c-01",
+      "question": "What stops secret files from being indexed?",
+      "provider": "gemini",
+      "model": "gemini-3.6-flash",
+      "coverage": 1.0,
+      "citations_valid": true,
+      "cited_indices": [
+        1,
+        3,
+        4
+      ],
+      "invalid_indices": [],
+      "sources_offered": 6,
+      "duration_ms": 67551,
+      "answer": "Secret files are stopped from being indexed by the `classify()` function in `backend/app/ingestion/filters.py` [3]:\n\n* **Security-first ordering:** Secret path checks run before any other filter or convenience check [1, 3].\n* **Secret check:** The path is checked using `is_secret_path(path)` [3].\n* **Rejection decision:** If it matches a secret path, `classify()` immediately returns a `FilterDecision(False, SkipReason.secret)` [3, 4].",
+      "should_refuse": false,
+      "cited_anything": true
+    },
+    {
+      "id": "c-02",
+      "question": "How are GitHub access tokens protected when stored?",
+      "provider": "gemini",
+      "model": "gemini-3.6-flash",
+      "coverage": 1.0,
+      "citations_valid": true,
+      "cited_indices": [
+        3,
+        5,
+        6
+      ],
+      "invalid_indices": [],
+      "sources_offered": 6,
+      "duration_ms": 3877,
+      "answer": "GitHub access tokens are protected through the following measures:\n\n* **Fernet Encryption at Rest:** Access tokens are Fernet-encrypted before being saved to the database in the `github_token_encrypted` column on the `users` table [3, 5, 6].\n* **Dedicated Encryption Key:** Encryption relies on `TOKEN_ENCRYPTION_KEY`, a dedicated secret separate from session signing secrets [3].\n* **Access Safeguards:** Tokens are never stored in plaintext, never logged, and never returned by any endpoint [5].",
+      "should_refuse": false,
+      "cited_anything": true
+    },
+    {
+      "id": "c-03",
+      "question": "How does the agent stop itself running forever?",
+      "provider": "gemini",
+      "model": "gemini-3.6-flash",
+      "coverage": 0.8,
+      "citations_valid": true,
+      "cited_indices": [
+        1,
+        5,
+        6
+      ],
+      "invalid_indices": [],
+      "sources_offered": 6,
+      "duration_ms": 5941,
+      "answer": "The agent prevents itself from running forever using the following mechanisms:\n\n1. **Hard Iteration Cap**: The investigation loop is bounded by a maximum iteration limit (`agent_run.max_iterations`) [1][5][6]. The default cap is set to 8 iterations (`DEFAULT_MAX_ITERATIONS = 8`) [5].\n2. **Termination on Reaching Cap**: If the loop reaches `agent_run.max_iterations`, the run terminates with a `max_iterations_exceeded` status and returns its partial findings rather than continuing indefinitely or hallucinating an answer [1][5].\n3. **Early Exit on Final Action**: The loop stops early as soon as the agent proposes a final action (`action.is_final`), completing the investigation and returning an outcome with `AgentStatus.succeeded` [1].",
+      "should_refuse": false,
+      "cited_anything": true
+    },
+    {
+      "id": "c-04",
+      "question": "What is the airspeed velocity of an unladen swallow?",
+      "provider": "gemini",
+      "model": "gemini-3.6-flash",
+      "coverage": 1.0,
+      "citations_valid": true,
+      "cited_indices": [
+        1
+      ],
+      "invalid_indices": [],
+      "sources_offered": 6,
+      "duration_ms": 61893,
+      "answer": "The provided sources do not contain the answer to this question [1]. \n\nSource [1] notes that \"airspeed velocity of an unladen swallow\" was used as an off-topic test question for language models: `qwen2.5-coder:1.5b` fabricated an answer (\"45 mph\" / \"approximately 47 mph\"), whereas `qwen2.5-coder:3b` refused to answer because it is not related to the codebase [1].",
+      "should_refuse": true,
+      "cited_anything": true
+    }
+  ]
+}
