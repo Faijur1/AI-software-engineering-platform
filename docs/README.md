@@ -645,8 +645,10 @@ system promises, so an unchecked assertion is a weaker guarantee than it looks;
 the gate is now configured in `pyproject.toml` and covers all three, so a bare
 `mypy` checks everything.
 
-- Quality gate: `ruff` clean, `mypy --strict` clean on **119 files** (was 82;
-  tests now included), 345 tests passing, `tsc --noEmit` clean, `eslint` clean.
+- Quality gate: `ruff` clean, `mypy --strict` clean on **120 files** (was 82
+  before tests were included in the gate), **373 tests** passing, `tsc --noEmit`
+  clean, `eslint` clean, `next build` succeeding — and all three now run in CI on
+  every push and pull request rather than when someone remembers.
 
 ---
 

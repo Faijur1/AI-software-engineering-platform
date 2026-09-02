@@ -1,6 +1,8 @@
 # Low-Level Design — Stage 1
 
-Modules marked *(planned)* do not exist yet.
+Everything described here exists. Where a Stage 1 interface was designed and
+then built differently, the section says so rather than describing the design
+as though it had been followed.
 
 ## Backend layout
 
@@ -30,9 +32,14 @@ backend/
 │   ├── queue/                  queue interface + RQ backend (ADR-003)
 │   └── workers/                worker entrypoints
 ├── migrations/                 Alembic
+├── scripts/                    CI helpers (annotate_failures.py)
 ├── tests/{unit,integration}/
 └── eval/                       benchmark, metrics, runner, saved results
 ```
+
+`docker/sandbox.Dockerfile` and its entrypoint sit at the repository root rather
+than under `backend/`, because the sandbox image is built from the root context;
+`app/sandbox/runner.py` names that exact command when the image is missing.
 
 **Layering rule.** Routes validate and delegate; services hold business logic
 and own transaction boundaries; models are persistence only. Routes never
@@ -80,32 +87,89 @@ and measured latency, and returning 503 when any dependency is down. Failure
 messages are reduced to the exception *type*, because connection errors can
 embed a DSN containing credentials.
 
-## Planned modules
+## Stage 1 interfaces, as designed and as built
 
-Interfaces are recorded here as design intent. They are not yet implemented.
+These interfaces were recorded at the start of Stage 1 as design intent. Almost
+all of them now exist, under names that drifted as the code met the problem. The
+mapping is kept rather than deleted: where a name changed, the change is usually
+the interesting part.
 
-```
-IngestionService: clone_repository, discover_files, filter_files,
-                  parse_file, chunk_file
-Chunker:          detect_language, parse_ast, extract_symbols,
-                  create_function_chunks, create_class_chunks, attach_metadata
-RAGService:       process_query, vector_search, keyword_search, merge_results,
-                  rerank, deduplicate, build_context, generate_citations
-LLMProvider:      generate, stream, structured_output, tool_call
-AgentEngine:      create_run, load_state, plan, select_action, execute_tool,
-                  observe, validate, update_state, finalize
-Tool:             name, description, input_schema, permissions, execute
-SandboxManager:   create_container, configure_limits, mount_workspace,
-                  execute_command, capture_logs, destroy_container
-JobQueue:         enqueue_job, process_job          # Kafka swap point, ADR-004
-```
+| Designed | Built as | Note |
+| --- | --- | --- |
+| `IngestionService` | `ingestion/service.py` — `index_repository` | One entry point, not a class. `clone_repository` became `fetcher.py` fetching a tarball, never a clone (ADR-010) |
+| `Chunker` | `ingestion/chunker.py` — `chunk_source`, `Chunk` | `parse_ast` / `extract_symbols` are internal to tree-sitter chunking; the public surface is one function |
+| `RAGService` | `rag/` — `retrieve`, plus `vector`, `keyword`, `fusion`, `reranker` | `merge_results` became RRF (ADR-011). `generate_citations` lives in `llm/chat.py`, since citations are a property of the answer, not of retrieval |
+| `LLMProvider` | `llm/base.py`, `llm/ollama.py`, `llm/chat.py` — `embed`, `complete`, `answer_question` | Embedding and generation are configured independently on purpose |
+| `AgentEngine` | `agent/engine.py` — `run_agent`, `parse_action` | A bounded loop rather than the nine-method lifecycle designed; the cap is the property worth having |
+| `Tool` | `agent/tools.py` — `Tool`, `Permission`, `ToolContext` | Permissions are enforced in code at dispatch, not documented as a convention |
+| `SandboxManager` | `sandbox/runner.py` — `run`, `build_command`, `remove_workspace` | Functions over a class. `build_command` is separate so the security policy can be asserted verbatim in a test |
+| `JobQueue` | `queue/base.py` — `enqueue_index_repository`, `enqueue_agent_run` | A `Protocol`, kept narrow as the Kafka swap point (ADR-004) |
+
+**Not built.** `LLMProvider.stream`, `structured_output` and `tool_call` do not
+exist. Streaming was never needed by a page that renders a completed answer, and
+the other two describe provider features the local model does not offer — the
+agent parses actions out of text instead, which is why `parse_action` is written
+to tolerate a weak model's output.
+
+## `agent/`
+
+`engine.py` runs a bounded loop. The cap is `AgentRun.max_iterations`, a column
+on the run itself, and nothing in the codebase assigns to it after the run is
+created — so a model that never converges terminates with
+`max_iterations_exceeded` rather than running until something else stops it.
+That status is terminal but *not* a failure, and the benchmark counts it
+separately — merging the two would hide the difference between wrong and
+unfinished.
+
+`parse_action` is deliberately forgiving. The local model emits malformed JSON,
+prose around its JSON, and occasionally a tool name it invented; each is a
+rejection recorded against the run rather than an exception, because a benchmark
+that crashes on bad output measures nothing.
+
+`tools.py` enforces permissions in code at dispatch. A tool declares what it
+needs, the run declares what it was granted, and the check is a comparison
+neither side can talk its way past. Path arguments go through
+`resolve_in_workspace`, which resolves symlinks before comparing, so `..` and a
+symlink out of the tree are the same rejection.
+
+`patches.py` applies a proposed diff to a *copy* and runs the tests there, so a
+half-applied patch cannot corrupt the snapshot the rest of the run is reading.
+It owns the temporary directory's lifetime rather than using
+`TemporaryDirectory`, whose cleanup chmods what it cannot delete — see
+`sandbox/`.
+
+## `sandbox/`
+
+The hard boundary from ADR-006. `build_command` is a separate function because
+its argument list *is* the security policy: no network, read-only root, uid
+65534, all capabilities dropped, pids and memory capped. Keeping it separate
+lets a test assert the flags verbatim, which a boundary nobody checks would not
+have.
+
+`run` kills the container explicitly on timeout. `subprocess` timeouts kill only
+the docker *client*, so without that the timeout would be a lie. Teardown then
+waits for the daemon to stop listing the container: `--rm` makes removal
+asynchronous, so returning as soon as the commands finish left a container alive
+often enough to matter on Linux.
+
+`remove_workspace` exists because the sandbox creates files as uid 65534 that
+the host user owns neither the files nor the directories of. It falls back to
+deleting the tree from inside a root container when the host cannot. Untrusted
+code that can make its own workspace undeletable can fill the disk of whatever
+runs it, which is a denial of service rather than untidiness.
+
+## `queue/`
+
+`base.py` is a `Protocol` with one method per job kind, kept deliberately narrow
+so the RQ backend can be replaced by Kafka without touching callers (ADR-004).
+The RQ backend uses `SimpleWorker` on Windows, which has no `os.fork`.
 
 ## Frontend layout
 
 ```
 frontend/src/
 ├── app/            App Router pages
-├── features/       feature-scoped components (health, repos, chat, ...)
+├── features/       agent, auth, chat, health, repositories, search
 └── lib/            api client, config
 ```
 
