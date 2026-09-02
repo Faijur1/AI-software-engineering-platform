@@ -20,3 +20,12 @@ class JobQueue(Protocol):
         and no access token is ever written into the queue.
         """
         ...
+
+    def enqueue_agent_run(self, run_id: uuid.UUID, *, allow_tests: bool) -> None:
+        """Queue an agent run for an already-persisted ``agent_runs`` row.
+
+        ``allow_tests`` travels with the job rather than being read from the
+        run: it is a permission grant made at request time, and re-deriving it
+        later would risk widening it.
+        """
+        ...

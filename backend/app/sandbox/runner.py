@@ -37,10 +37,15 @@ from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 
-# Small, predictable, and already pulled for the test suite. A repository
-# needing other tooling is out of Stage 1 scope: with no network, dependencies
-# cannot be installed at run time (ADR-006, Consequences).
-DEFAULT_IMAGE: Final = "python:3.11-slim"
+# Built from docker/sandbox.Dockerfile. It exists because the container runs
+# with --network none, so nothing can be installed at run time -- whatever a
+# test suite needs is baked in at build time, where the contents are
+# reviewable. This is the "pre-built image" mitigation ADR-006 names.
+#
+# A repository needing tooling that is not in it cannot be tested in Stage 1.
+# That is a real limit, and the honest response is to say so rather than to
+# relax the network constraint.
+DEFAULT_IMAGE: Final = "aisep-sandbox:latest"
 
 # Deliberately conservative. A runaway test suite must not take down the host
 # it is running on.
@@ -101,6 +106,25 @@ def is_available() -> bool:
             ["docker", "version", "--format", "{{.Server.Version}}"],
             capture_output=True,
             timeout=15,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return completed.returncode == 0
+
+
+def image_exists(image: str) -> bool:
+    """Whether ``image`` is present locally.
+
+    Checked before running rather than letting docker fail: with no network the
+    image cannot be pulled, so a missing one is a setup step the user has to
+    take, and saying which command to run is more useful than a pull error.
+    """
+    try:
+        completed = subprocess.run(
+            ["docker", "image", "inspect", image],
+            capture_output=True,
+            timeout=30,
             check=False,
         )
     except (OSError, subprocess.SubprocessError):
@@ -169,6 +193,11 @@ def run(
         )
     if not workspace.is_dir():
         raise SandboxError("The workspace directory does not exist")
+    if not image_exists(image):
+        raise SandboxUnavailableError(
+            f"The sandbox image '{image}' is not built. Build it first: "
+            "docker build -f docker/sandbox.Dockerfile -t aisep-sandbox:latest ."
+        )
 
     container_name = f"aisep-sandbox-{uuid.uuid4().hex[:12]}"
     command = build_command(

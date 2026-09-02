@@ -22,6 +22,7 @@ JOB_TIMEOUT_SECONDS: Final = 60 * 30
 # ingestion stack -- it would otherwise pull tree-sitter into the web server for
 # no reason.
 WORKER_ENTRYPOINT: Final = "app.workers.ingestion.run_index_job"
+AGENT_ENTRYPOINT: Final = "app.workers.agent.run_agent_job"
 
 
 class RQJobQueue:
@@ -41,6 +42,17 @@ class RQJobQueue:
             failure_ttl=86400,
         )
         logger.info("job_enqueued", job_id=str(job_id), queue=QUEUE_NAME)
+
+    def enqueue_agent_run(self, run_id: uuid.UUID, *, allow_tests: bool) -> None:
+        self._queue.enqueue(
+            AGENT_ENTRYPOINT,
+            str(run_id),
+            allow_tests,
+            job_timeout=JOB_TIMEOUT_SECONDS,
+            result_ttl=3600,
+            failure_ttl=86400,
+        )
+        logger.info("agent_run_enqueued", run_id=str(run_id), allow_tests=allow_tests)
 
 
 @lru_cache(maxsize=1)
