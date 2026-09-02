@@ -4,6 +4,7 @@ import { SignInButton } from "@/features/auth/SignInButton";
 import { UserMenu } from "@/features/auth/UserMenu";
 import type { User } from "@/features/auth/types";
 import { IndexButton } from "@/features/repositories/IndexButton";
+import { CloudPermissionToggle } from "@/features/repositories/CloudPermissionToggle";
 import { RepositoryActionButton } from "@/features/repositories/RepositoryActionButton";
 import { AgentPanel } from "@/features/agent/AgentPanel";
 import { ReplayPanel } from "@/features/agent/ReplayPanel";
@@ -103,6 +104,17 @@ export default async function RepositoriesPage({ searchParams }: PageProps) {
                     <p className="mt-0.5 text-xs text-black/40 dark:text-white/40">
                       {formatIndexSize(repo)}
                     </p>
+                  )}
+                  {/* Shown once there is something to ask about: before then
+                      the choice is not yet live and would be noise. */}
+                  {repo.embedded_chunks > 0 && (
+                    <div className="mt-2">
+                      <CloudPermissionToggle
+                        repositoryId={repo.id}
+                        allowed={repo.allow_cloud_llm}
+                        grantedAt={repo.cloud_llm_allowed_at}
+                      />
+                    </div>
                   )}
                 </div>
                 <div className="flex shrink-0 items-center gap-2">

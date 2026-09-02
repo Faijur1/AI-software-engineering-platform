@@ -2,8 +2,15 @@
 
 import { useEffect, useState } from "react";
 
-import { readRun, readTrace, startRun } from "@/features/agent/actions";
-import type { AgentRunDetail, ToolRun, Trace, TraceEvent } from "@/features/agent/types";
+import { readPatch, readRun, readTrace, startRun } from "@/features/agent/actions";
+import { PatchViewer } from "@/features/agent/PatchViewer";
+import type {
+  AgentRunDetail,
+  Patch,
+  ToolRun,
+  Trace,
+  TraceEvent,
+} from "@/features/agent/types";
 
 // A run is minutes of model calls. Three seconds is often enough to see the
 // next iteration without hammering the API.
@@ -24,6 +31,7 @@ export function AgentPanel({ repositoryId }: { repositoryId: string }) {
   const [allowTests, setAllowTests] = useState(false);
   const [runId, setRunId] = useState<string | null>(null);
   const [run, setRun] = useState<AgentRunDetail | null>(null);
+  const [patches, setPatches] = useState<Patch[]>([]);
   const [trace, setTrace] = useState<Trace | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
@@ -60,11 +68,38 @@ export function AgentPanel({ repositoryId }: { repositoryId: string }) {
     };
   }, [runId]);
 
+  // Patches are fetched by id rather than embedded in the run: a proposal
+  // carries a full diff, and the run detail is polled every couple of seconds
+  // while the agent works. The join key is stable, so this settles once.
+  const patchIds = run?.patch_ids ?? [];
+  const patchKey = patchIds.join(",");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      if (patchKey === "") {
+        if (!cancelled) setPatches([]);
+        return;
+      }
+      const loaded = await Promise.all(patchKey.split(",").map(readPatch));
+      if (cancelled) return;
+      // A patch that could not be read is dropped rather than rendered as an
+      // empty card: an approval gate showing nothing is worse than absent.
+      setPatches(loaded.filter((patch): patch is Patch => patch !== null));
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [patchKey]);
+
   const begin = async () => {
     setStarting(true);
     setError(null);
     setTrace(null);
     setRun(null);
+    setPatches([]);
     const result = await startRun(repositoryId, task, allowTests);
     setStarting(false);
 
@@ -126,7 +161,7 @@ export function AgentPanel({ repositoryId }: { repositoryId: string }) {
         </p>
       )}
 
-      {run && <RunView run={run} trace={trace} />}
+      {run && <RunView run={run} trace={trace} patches={patches} />}
     </section>
   );
 }
@@ -139,7 +174,15 @@ const STATUS_STYLES: Record<string, string> = {
   max_iterations_exceeded: "bg-amber-500/15 text-amber-700 dark:text-amber-500",
 };
 
-function RunView({ run, trace }: { run: AgentRunDetail; trace: Trace | null }) {
+function RunView({
+  run,
+  trace,
+  patches,
+}: {
+  run: AgentRunDetail;
+  trace: Trace | null;
+  patches: Patch[];
+}) {
   return (
     <div className="mt-4 rounded-lg border border-black/10 p-4 dark:border-white/15">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -180,6 +223,12 @@ function RunView({ run, trace }: { run: AgentRunDetail; trace: Trace | null }) {
           </p>
         </div>
       )}
+
+      {patches.map((patch) => (
+        <div key={patch.id} className="mt-4">
+          <PatchViewer patch={patch} />
+        </div>
+      ))}
 
       {run.tool_runs.length > 0 && <ToolCalls calls={run.tool_runs} />}
       {trace && <TraceView trace={trace} />}

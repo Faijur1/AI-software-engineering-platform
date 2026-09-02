@@ -45,6 +45,38 @@ export async function disconnectRepository(id: string): Promise<ActionResult> {
   return { error: null };
 }
 
+/**
+ * Grant or withdraw permission to send this repository's code to a hosted model.
+ *
+ * Per repository and never implied: enabling a provider in configuration opts
+ * nothing in. Withdrawal applies to the next question only — it cannot recall
+ * anything already sent, and the UI says so rather than implying otherwise.
+ */
+export async function setCloudPermission(
+  id: string,
+  allow: boolean,
+): Promise<ActionResult> {
+  try {
+    await authedFetch(`/repositories/${id}/settings`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ allow_cloud_llm: allow }),
+    });
+  } catch (error) {
+    return {
+      error: describe(
+        error,
+        allow
+          ? "Could not enable the hosted model for this repository"
+          : "Could not withdraw permission for this repository",
+      ),
+    };
+  }
+
+  revalidatePath("/repositories");
+  return { error: null };
+}
+
 /** Turn a backend error code into something a person can act on. */
 function describe(error: unknown, fallback: string): string {
   if (!(error instanceof ApiError)) return fallback;

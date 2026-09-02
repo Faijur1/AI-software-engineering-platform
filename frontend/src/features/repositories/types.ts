@@ -43,4 +43,13 @@ export interface ConnectedRepository {
   chunk_count: number;
   /** Below chunk_count means a partial embedding pass, which is worth showing. */
   embedded_chunks: number;
+  /**
+   * Whether this repository's retrieved code may be sent to a hosted model.
+   *
+   * Defaults to false and is never set implicitly. A repository that has not
+   * opted in is answered by the local model instead of being refused.
+   */
+  allow_cloud_llm: boolean;
+  /** When permission was granted, so consent is auditable rather than current. */
+  cloud_llm_allowed_at: string | null;
 }
