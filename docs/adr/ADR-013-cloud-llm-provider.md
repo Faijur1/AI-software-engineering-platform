@@ -192,7 +192,10 @@ operator makes once rather than per project. `docs/security.md` should be read
 alongside this.
 
 **Cost and quota are unresolved.** The free tier is **20 requests per day, per
-model** — not per minute. That is enough for interactive chat and far too little
+project, per model** — not per minute, and not per key. Verified by rotating the
+key: the replacement inherited the exhausted allowance on the same model while
+other models still answered. A compromised key can therefore be rotated freely
+without buying back any quota. That is enough for interactive chat and far too little
 for the agent benchmark, which needs 30–70 calls for one sweep. The agent
 comparison this ADR would have wanted therefore **has no numbers**, and none are
 invented here: every task in both attempts failed on quota at the first

@@ -792,7 +792,10 @@ read.
 ### The agent comparison has no numbers
 
 Not a small partial result — **none**. The free tier allows **20 requests per
-day, per model**, and one 12-task benchmark sweep needs 30–70. Both attempts
+day, per project, per model** — `GenerateRequestsPerDayPerProjectPerModel` — and
+one 12-task benchmark sweep needs 30–70. The scope matters: rotating the API key
+does **not** reset the allowance, because it belongs to the project rather than
+the key. Switching to a different model does, since each carries its own. Both attempts
 failed at the first iteration of every task, with no tool ever called, so
 nothing was measured and nothing is reported. The saved report from the first
 attempt was deleted rather than kept: it contained no measurement and, because
