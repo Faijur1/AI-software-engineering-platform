@@ -82,6 +82,17 @@ class Settings(BaseSettings):
     # too large and one failure wastes more work and the request can time out.
     embedding_batch_size: int = 32
 
+    # ---------- Ingestion ----------
+    # Extra directory names excluded from indexing, comma-separated. Empty by
+    # default: these are deployment-specific, and a name that is benchmark
+    # scaffolding in one repository is ordinary source in another.
+    #
+    # Set to "eval" when running this project's own agent benchmark against
+    # this repository, or the agent retrieves the benchmark instead of the code
+    # the benchmark asks about.
+    extra_excluded_directories_raw: str = Field(
+        default="", alias="EXTRA_EXCLUDED_DIRECTORIES"
+    )
 
     # ---------- URLs ----------
     # Where the browser is sent after a completed OAuth round trip, and the
@@ -98,6 +109,11 @@ class Settings(BaseSettings):
     @property
     def github_callback_url(self) -> str:
         return f"{self.backend_url.rstrip('/')}/auth/github/callback"
+
+    @property
+    def extra_excluded_directories(self) -> frozenset[str]:
+        parts = self.extra_excluded_directories_raw.split(",")
+        return frozenset(part.strip() for part in parts if part.strip())
 
 
 @lru_cache(maxsize=1)

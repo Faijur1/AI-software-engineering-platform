@@ -16,6 +16,7 @@ from typing import Final
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.ingestion.chunker import chunk_source
 from app.ingestion.discovery import DiscoveredFile, discover
@@ -65,7 +66,9 @@ def index_repository(
     report_progress(0, "fetching repository")
     with fetch_snapshot(token, owner, name, ref) as snapshot:
         report_progress(_PROGRESS_FETCHED, "discovering files")
-        found = discover(snapshot.root)
+        found = discover(
+            snapshot.root, extra_excluded_dirs=get_settings().extra_excluded_directories
+        )
 
         report_progress(_PROGRESS_DISCOVERED, "parsing and chunking")
         result = _persist(

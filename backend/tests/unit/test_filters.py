@@ -112,3 +112,38 @@ def test_windows_separators_are_handled() -> None:
     """Paths are normalised, so the same rules apply whatever produced them."""
     assert classify("node_modules\\react\\index.js", 100).include is False
     assert classify("config\\.env", 100).reason is SkipReason.secret
+
+
+def test_extra_excluded_directories_are_applied_on_top_of_the_built_ins() -> None:
+    """Deployment-specific exclusions, kept out of the global constant.
+
+    "eval" holds this project's benchmark, but in another repository it is
+    ordinary source -- so excluding it globally would silently shrink someone
+    else's index for a reason they could not see.
+    """
+    extra = frozenset({"eval"})
+
+    assert classify("backend/eval/agent_benchmark.py", 500).include is True
+    decision = classify(
+        "backend/eval/agent_benchmark.py", 500, extra_excluded_dirs=extra
+    )
+    assert decision.include is False
+    assert decision.reason is SkipReason.excluded_directory
+
+
+def test_extra_exclusions_do_not_weaken_the_built_in_rules() -> None:
+    """Adding a name must not shadow a check that already applies."""
+    extra = frozenset({"eval"})
+
+    assert classify("config/.env", 50, extra_excluded_dirs=extra).reason is SkipReason.secret
+    assert (
+        classify("node_modules/x/y.js", 50, extra_excluded_dirs=extra).reason
+        is SkipReason.excluded_directory
+    )
+
+
+def test_an_extra_exclusion_matches_a_path_segment_not_a_substring() -> None:
+    extra = frozenset({"eval"})
+
+    assert classify("backend/evaluation/x.py", 100, extra_excluded_dirs=extra).include is True
+    assert classify("backend/my_eval.py", 100, extra_excluded_dirs=extra).include is True

@@ -513,3 +513,87 @@ def test_a_run_is_created_in_the_queued_state(
         run = session.get(AgentRun, uuid.UUID(run_id))
         assert run is not None
         assert run.status is AgentStatus.queued
+
+
+def test_runs_can_be_listed_newest_first(
+    client: TestClient, github: Callable[[int, str], None], queued: list[Any]
+) -> None:
+    """The replay picker needs a list; ordering is what makes it usable."""
+    github(ALICE, "alice")
+    _sign_in(client)
+    repository_id = _connect_and_index(client)
+
+    first = _start_run(client, repository_id)
+    second = _start_run(client, repository_id)
+
+    listed = client.get("/agents/runs").json()
+
+    assert [run["id"] for run in listed][:2] == [second, first]
+
+
+def test_the_run_listing_is_bounded(
+    client: TestClient, github: Callable[[int, str], None], queued: list[Any]
+) -> None:
+    """One request must not be able to pull an unbounded history."""
+    github(ALICE, "alice")
+    _sign_in(client)
+
+    assert client.get("/agents/runs?limit=500").status_code == 422
+
+
+def test_the_run_listing_shows_only_your_own_runs(
+    client: TestClient, github: Callable[[int, str], None], queued: list[Any]
+) -> None:
+    github(ALICE, "alice")
+    _sign_in(client)
+    alice_run = _start_run(client, _connect_and_index(client))
+
+    with TestClient(client.app, raise_server_exceptions=False) as bob:
+        github(BOB, "bob")
+        _sign_in(bob)
+        listed = bob.get("/agents/runs").json()
+
+    assert alice_run not in [run["id"] for run in listed]
+
+
+def test_listing_runs_requires_a_session(anonymous_client: TestClient) -> None:
+    assert anonymous_client.get("/agents/runs").status_code == 401
+
+
+def test_trace_events_carry_the_timing_replay_needs(
+    client: TestClient, github: Callable[[int, str], None], queued: list[Any]
+) -> None:
+    """Replay derives its pacing from recorded timestamps, so they must be
+    present and ordered -- an invented interval would make the replay a
+    dramatisation rather than a record."""
+    from datetime import UTC, datetime, timedelta
+
+    from app.models.agent import Event
+
+    github(ALICE, "alice")
+    _sign_in(client)
+    repository_id = _connect_and_index(client)
+    trace_id = client.post(
+        "/agents/run", json={"repository_id": repository_id, "task": "t"}
+    ).json()["trace_id"]
+
+    base = datetime.now(UTC)
+    with session_scope() as session:
+        for sequence, offset in [(1, 0), (2, 3), (3, 11)]:
+            session.add(
+                Event(
+                    trace_id=trace_id,
+                    sequence=sequence,
+                    event_type="tool.started",
+                    component="tool",
+                    ts=base + timedelta(seconds=offset),
+                )
+            )
+
+    events = client.get(f"/traces/{trace_id}").json()["events"]
+
+    assert [e["sequence"] for e in events] == [1, 2, 3]
+    stamps = [datetime.fromisoformat(e["ts"]) for e in events]
+    # Real, increasing gaps -- the intervals the replay will scale.
+    assert (stamps[1] - stamps[0]).total_seconds() == 3
+    assert (stamps[2] - stamps[1]).total_seconds() == 8

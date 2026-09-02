@@ -220,6 +220,7 @@ baseline.
 | Method | Path | Purpose |
 | --- | --- | --- |
 | POST | `/agents/run` | Queue an agent run; **202** with a record to poll |
+| GET | `/agents/runs` | Recent runs, newest first (bounded) |
 | GET | `/agents/runs/{id}` | A run, its tool calls and its patch ids |
 | GET | `/traces/{id}` | Ordered events for one run |
 | POST | `/patches` | Propose a patch from a run |

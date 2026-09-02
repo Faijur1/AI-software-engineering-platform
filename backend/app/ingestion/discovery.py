@@ -53,11 +53,13 @@ class DiscoveryReport:
         return len(self.included) + sum(self.skipped.values())
 
 
-def discover(root: Path) -> DiscoveryReport:
+def discover(
+    root: Path, *, extra_excluded_dirs: frozenset[str] = frozenset()
+) -> DiscoveryReport:
     """Find every indexable file beneath ``root``."""
     report = DiscoveryReport()
 
-    files, report.pruned_directories = _walk(root)
+    files, report.pruned_directories = _walk(root, extra_excluded_dirs)
 
     for entry in files:
         relative = entry.relative_to(root).as_posix()
@@ -68,7 +70,7 @@ def discover(root: Path) -> DiscoveryReport:
             report.skipped[SkipReason.binary] += 1
             continue
 
-        decision = classify(relative, size)
+        decision = classify(relative, size, extra_excluded_dirs=extra_excluded_dirs)
         if not decision.include:
             assert decision.reason is not None
             report.skipped[decision.reason] += 1
@@ -102,7 +104,7 @@ def discover(root: Path) -> DiscoveryReport:
     return report
 
 
-def _walk(root: Path) -> tuple[list[Path], int]:
+def _walk(root: Path, extra_excluded_dirs: frozenset[str]) -> tuple[list[Path], int]:
     """Collect regular files, pruning excluded directories as we descend.
 
     Returns the files found and how many directory trees were pruned.
@@ -128,7 +130,7 @@ def _walk(root: Path) -> tuple[list[Path], int]:
             if entry.is_symlink():
                 continue
             if entry.is_dir():
-                if entry.name in EXCLUDED_DIRECTORIES:
+                if entry.name in EXCLUDED_DIRECTORIES or entry.name in extra_excluded_dirs:
                     pruned += 1
                 else:
                     stack.append(entry)

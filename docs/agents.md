@@ -70,9 +70,20 @@ Every run emits ordered events to the `events` table under one `trace_id`:
 `tool.completed`, `test.started`, `test.completed`, `patch.created`,
 `agent.completed`.
 
-Stage 1 exposes these as a list. The Stage 2 replay UI (play/pause/step/speed)
-replays these stored events — it is a view over recorded data, never a
-reconstruction or an animation.
+Stage 1 exposes these as a list. The **replay UI** (Stage 2 milestone 5) adds
+play, pause, step and speed over the same rows — it is a view over recorded
+data, never a reconstruction or an animation.
+
+That distinction is load-bearing rather than decorative. The pacing comes from
+the recorded `ts` values: the gap between two events on screen is the gap that
+actually elapsed, divided by the speed multiplier. Nothing is interpolated or
+smoothed, so the replay shows where a run really spent its time — which is the
+only reason to watch one rather than read the list.
+
+One honest compromise: gaps longer than four seconds are shortened during
+playback, because a 30-second model call would otherwise stall the replay. The
+clamp is stated in the UI and the elapsed totals shown alongside remain the
+real recorded times.
 
 ## Handling a weak model
 

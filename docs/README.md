@@ -43,7 +43,7 @@ that before any specialisation is built.
 | 2 | Persisted `AgentState`, agent identity on tool runs and events | ⏸️ **Paused — see baseline** |
 | 3 | Agent roles with scoped permissions (Research, Coding, Testing, Review) | ⏸️ **Paused** |
 | 4 | Manager and handoffs | ⏸️ **Paused** |
-| 5 | Replay UI over stored events | ⬜ Not started |
+| 5 | Replay UI over stored events | ✅ **Done** |
 | 6 | Branch and PR creation behind the approval gate | ⬜ Not started |
 | 7 | Measure against the baseline; keep or revert | ⬜ Not started |
 

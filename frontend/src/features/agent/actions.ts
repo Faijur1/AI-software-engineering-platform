@@ -36,6 +36,15 @@ export async function startRun(
   }
 }
 
+/** Recent runs, newest first, for the replay picker. */
+export async function listRuns(): Promise<AgentRun[]> {
+  try {
+    return await authedFetch<AgentRun[]>("/agents/runs?limit=20");
+  } catch {
+    return [];
+  }
+}
+
 export async function readRun(runId: string): Promise<AgentRunDetail | null> {
   try {
     return await authedFetch<AgentRunDetail>(`/agents/runs/${runId}`);

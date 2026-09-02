@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
@@ -105,6 +105,32 @@ def start_run(
         allow_tests=payload.allow_tests,
     )
     return run
+
+
+@router.get(
+    "/agents/runs",
+    response_model=list[AgentRunResponse],
+    summary="Recent agent runs",
+)
+def list_runs(
+    user: CurrentUser,
+    session: DbSession,
+    limit: int = Query(default=20, ge=1, le=100),
+) -> list[AgentRun]:
+    """List the caller's recent runs, newest first.
+
+    Scoped through the owning repository like every other agent read, and
+    bounded so one request cannot pull an unbounded history.
+    """
+    return list(
+        session.execute(
+            select(AgentRun)
+            .join(Repository, Repository.id == AgentRun.repository_id)
+            .where(Repository.user_id == user.id)
+            .order_by(AgentRun.created_at.desc())
+            .limit(limit)
+        ).scalars()
+    )
 
 
 @router.get(

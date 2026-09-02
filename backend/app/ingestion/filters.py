@@ -140,11 +140,20 @@ def is_secret_path(path: str) -> bool:
     return any(fnmatch.fnmatch(lowered, pattern.lower()) for pattern in SECRET_GLOBS)
 
 
-def classify(path: str, size_bytes: int) -> FilterDecision:
+def classify(
+    path: str, size_bytes: int, *, extra_excluded_dirs: frozenset[str] = frozenset()
+) -> FilterDecision:
     """Decide whether ``path`` should be indexed, and if not, why.
 
     Order matters: the security check runs before every convenience check, so
     no future reordering of the cheap exclusions can let a secret through.
+
+    ``extra_excluded_dirs`` adds deployment-specific directory names on top of
+    the built-in list. It is a parameter rather than a constant because the
+    names that belong in it are not universal: ``eval`` holds this project's
+    benchmark, but in another repository it is ordinary source, and silently
+    dropping it there would shrink someone's index for no reason they could
+    see.
     """
     segments = _segments(path)
     if not segments:
@@ -154,7 +163,8 @@ def classify(path: str, size_bytes: int) -> FilterDecision:
     if is_secret_path(path):
         return FilterDecision(False, SkipReason.secret)
 
-    if any(seg in EXCLUDED_DIRECTORIES for seg in segments[:-1]):
+    excluded_dirs = EXCLUDED_DIRECTORIES | extra_excluded_dirs
+    if any(seg in excluded_dirs for seg in segments[:-1]):
         return FilterDecision(False, SkipReason.excluded_directory)
 
     if name in EXCLUDED_FILENAMES:
