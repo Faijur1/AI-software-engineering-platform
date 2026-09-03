@@ -1024,3 +1024,88 @@ fresh GitHub sign-in.
 
 - Quality gate: `ruff` clean, `mypy --strict` clean on 134 files, **420 tests**
   passing, `alembic check` clean.
+
+---
+
+## Stage 3, milestone 2 — Kafka behind the existing seams
+
+Two seams were claimed to be real: `EventPublisher` (milestone 1) and `JobQueue`
+(ADR-003, written in Stage 1). Both now have a Kafka implementation, and
+neither `types.py`, `recorder.py` nor any route changed to accommodate it. That
+is the evidence the seams were genuine rather than decorative.
+
+### What runs, and only when asked
+
+Kafka is profile-gated in `docker-compose.yml` and **not started by default**:
+
+```bash
+docker compose --profile kafka up -d
+```
+
+Single broker in KRaft mode, so no ZooKeeper. Measured footprint: **264 MiB** —
+well below the 1–1.5 GB estimated when planning this, because the heap is pinned
+to 512 MB rather than left at a server default. That correction is worth
+recording: the memory case against Kafka was weaker than predicted, while the
+one against a Kubernetes control plane (ADR-005) stands.
+
+Topics are created explicitly rather than auto-created. Partition count cannot
+be reduced later, so it is a decision with a reason — one partition, because
+ordering is per partition and a single developer indexing one repository has no
+throughput problem that more would solve.
+
+### The delivery guarantee, stated where it lives
+
+`enable.idempotence` on the producer stops a *retry* writing twice. It does not
+make anything exactly-once. Auto-commit is **off** and offsets advance only
+after a handler returns, so a crash mid-handle redelivers rather than skips:
+losing an event is unrecoverable, seeing one twice is a problem a handler can
+solve. That is why subscribers were required to be idempotent in milestone 1,
+before anything could redeliver.
+
+### Verified against a real broker and a real indexing run
+
+The demonstration that matters, and it is one the in-process bus cannot give:
+
+1. The worker ran with `EVENT_BACKEND=kafka` and **no consumer running**.
+2. A real indexing run completed successfully — 226 files seen, 212 unchanged.
+3. **Zero events were recorded.** The trace was not lost; it was waiting.
+4. The consumer group started, drained the log, and the trace endpoint then
+   returned the full six-event lifecycle.
+
+Under the in-process bus, step 1 is not a state the system can be in — the
+recorder lives inside the producer, so stopping it is not something you can do.
+
+Seven Kafka tests cover the topic shape, idempotent creation, the payload
+surviving the wire, the job-queue round trip, and the contract test that matters:
+**the same lifecycle published through either backend produces an identical
+trace**. The suite is green both with the broker running (427 tests) and with it
+absent (420, Kafka tier deselected), so a checkout with no broker is not a
+broken checkout.
+
+### A bug worth recording
+
+The first consumer implementation treated two silences as the same thing.
+Before the first message, silence usually means the consumer has not finished
+joining its group and being assigned a partition — a handshake taking seconds.
+After the first message, it means the log is drained. Conflating them made the
+consumer conclude the topic was empty and return nothing, while the broker
+showed 20 messages and a consumer lag of 14. The wait before the first message
+is now generous and bounded; afterwards a few idle polls call it drained.
+
+A second, self-inflicted one: draining was inferred from `max_messages` being
+set, so a test that omitted it hung forever waiting like a worker. Stopping is
+now an explicit `until_drained` argument, because a caller's intent to stop is
+not something to infer from an unrelated parameter.
+
+### What Kafka is deliberately not used for
+
+`KafkaJobQueue` exists and works, but **RQ remains the default**. ADR-004 scopes
+Kafka to events, and for work dispatch RQ gives per-job retry and failure
+visibility that a log does not, while Kafka's advantages are worth little where
+exactly one consumer should act on each message. Agent runs are excluded
+outright — ADR-004 calls them a state machine rather than a stream — so
+`KafkaJobQueue.enqueue_agent_run` delegates to RQ, and a test pins that rather
+than trusting it.
+
+- Quality gate: `ruff` clean, `mypy --strict` clean on 141 files, **427 tests**
+  passing with Kafka up and 420 with it down, `alembic check` clean.

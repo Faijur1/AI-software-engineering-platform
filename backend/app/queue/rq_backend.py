@@ -56,7 +56,12 @@ class RQJobQueue:
 
 
 @lru_cache(maxsize=1)
-def get_queue() -> RQJobQueue:
-    """Return the process-wide queue handle."""
+def get_rq_queue() -> RQJobQueue:
+    """Return an RQ queue handle.
+
+    Named explicitly rather than ``get_queue`` now that there is more than one
+    backend: the Kafka queue delegates agent runs here, and a name that says
+    which transport it is makes that delegation legible at the call site.
+    """
     redis = Redis.from_url(str(get_settings().redis_url))
     return RQJobQueue(Queue(QUEUE_NAME, connection=redis))

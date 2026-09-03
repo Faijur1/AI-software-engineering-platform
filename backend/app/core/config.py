@@ -81,6 +81,20 @@ class Settings(BaseSettings):
     # affected: they stay on Ollama, because every stored vector records the
     # model that produced it and re-embedding the corpus to change provider is
     # a separate, deliberate act (ADR-013).
+    # Where indexing events go (ADR-004). "inprocess" fans out synchronously
+    # in the producer and is the default, so a checkout with no Kafka running
+    # still indexes and still records traces. "kafka" publishes to a durable
+    # log that independent consumer groups read at their own pace.
+    event_backend: Literal["inprocess", "kafka"] = "inprocess"
+    # Which backend dispatches indexing work. Redis/RQ remains the default;
+    # ADR-004 scopes Kafka to events, and this exists to demonstrate that the
+    # ADR-003 interface was a real seam rather than a claimed one.
+    queue_backend: Literal["rq", "kafka"] = "rq"
+    kafka_bootstrap_servers: str = "localhost:9092"
+    # A short timeout: publishing must never hold up an indexing run for long,
+    # and a trace is commentary on the work rather than the work itself.
+    kafka_flush_timeout_seconds: float = 5.0
+
     llm_provider: Literal["ollama", "gemini"] = "ollama"
 
     # Sent as a header, never in a URL: query strings end up in proxy logs and

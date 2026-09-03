@@ -78,6 +78,12 @@ class DomainEvent:
     event_type: str
     key: str
     sequence: int
+    # The run this event belongs to. Carried on the event rather than held by
+    # the consumer: the in-process bus sees one run and could hold it, but a
+    # consumer group sees every run and cannot. Putting it here is what makes
+    # both backends record a run under the same trace id, which is the whole
+    # point of the two being interchangeable.
+    trace_id: str = ""
     payload: dict[str, Any] = field(default_factory=dict)
     ts: datetime = field(default_factory=lambda: datetime.now(UTC))
     component: str = "ingestion"
@@ -104,6 +110,7 @@ class DomainEvent:
             "event_type": self.event_type,
             "key": self.key,
             "sequence": self.sequence,
+            "trace_id": self.trace_id,
             "ts": self.ts.isoformat(),
             "component": self.component,
             "status": self.status,
@@ -118,6 +125,7 @@ class DomainEvent:
             event_type=str(raw["event_type"]),
             key=str(raw["key"]),
             sequence=int(raw["sequence"]),
+            trace_id=str(raw.get("trace_id") or ""),
             payload=dict(raw.get("payload") or {}),
             ts=datetime.fromisoformat(str(raw["ts"])),
             component=str(raw.get("component") or "ingestion"),

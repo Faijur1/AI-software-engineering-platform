@@ -32,15 +32,16 @@ logger = get_logger(__name__)
 class TraceRecorder:
     """Writes indexing events into the shared ``events`` table."""
 
-    def __init__(self, trace_id: str) -> None:
-        self._trace_id = trace_id
-
     @property
     def name(self) -> str:
         return "trace-recorder"
 
     def handle(self, event: DomainEvent) -> None:
-        """Persist one event under this run's trace id.
+        """Persist one event under the trace its producer assigned.
+
+        Stateless on purpose. Holding a trace id would work for the in-process
+        bus, which only ever sees one run, and would silently mis-file every
+        event once the same code runs as a consumer group across many runs.
 
         The producer's ``sequence`` is used as-is rather than a counter local to
         this consumer. Under Kafka the consumer may restart mid-run, and a local
@@ -51,7 +52,7 @@ class TraceRecorder:
         with session_scope() as session:
             session.add(
                 Event(
-                    trace_id=self._trace_id,
+                    trace_id=event.trace_id,
                     sequence=event.sequence,
                     event_type=event.event_type,
                     component=event.component,

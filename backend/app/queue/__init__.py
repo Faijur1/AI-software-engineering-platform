@@ -10,6 +10,7 @@ Calling code sees ``enqueue()`` and nothing else about the backend.
 from __future__ import annotations
 
 from app.queue.base import JobQueue
-from app.queue.rq_backend import RQJobQueue, get_queue
+from app.queue.factory import get_queue
+from app.queue.rq_backend import RQJobQueue, get_rq_queue
 
-__all__ = ["JobQueue", "RQJobQueue", "get_queue"]
+__all__ = ["JobQueue", "RQJobQueue", "get_queue", "get_rq_queue"]

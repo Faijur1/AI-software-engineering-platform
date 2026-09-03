@@ -5,6 +5,7 @@ consumer in ``recorder``. Kafka replaces the publisher in milestone 2 without
 any of the other modules changing, which is the property the split exists for.
 """
 
+from app.events.factory import get_event_publisher
 from app.events.publisher import (
     EventPublisher,
     EventSubscriber,
@@ -21,4 +22,5 @@ __all__ = [
     "InProcessEventBus",
     "NullEventPublisher",
     "TraceRecorder",
+    "get_event_publisher",
 ]

@@ -16,7 +16,7 @@ from app.core.database import session_scope
 from app.core.errors import AppError
 from app.core.logging import bind_trace_id, get_logger, new_trace_id
 from app.core.security import decrypt_token
-from app.events import DomainEvent, InProcessEventBus, TraceRecorder
+from app.events import DomainEvent, get_event_publisher
 from app.events import types as events
 from app.models.job import Job, JobStatus
 from app.models.repository import IndexStatus, Repository
@@ -75,11 +75,11 @@ class _Emitter:
         self.trace_id = trace_id
         self._job_id = job_id
         self._sequence = 0
-        bus = InProcessEventBus()
-        # The second consumer (ADR-004). In milestone 2 this becomes a consumer
-        # group rather than a callback, and nothing in this class changes.
-        bus.subscribe(TraceRecorder(trace_id))
-        self._publisher = bus
+        # Which backend answers is configuration, not this class's decision.
+        # Under "inprocess" the factory wires the trace recorder in directly;
+        # under "kafka" the recorder is a separate consumer group and this
+        # producer never learns it exists.
+        self._publisher = get_event_publisher()
 
     def emit(self, event_type: str, **payload: object) -> None:
         self._sequence += 1
@@ -90,6 +90,7 @@ class _Emitter:
                     event_type=event_type,
                     key=self._job_id,
                     sequence=self._sequence,
+                    trace_id=self.trace_id,
                     status=str(status) if status is not None else None,
                     payload=dict(payload),
                 )

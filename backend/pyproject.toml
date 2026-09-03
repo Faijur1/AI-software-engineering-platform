@@ -65,6 +65,14 @@ files = ["app", "eval", "tests"]
 module = ["redis.*", "rq.*", "tree_sitter_language_pack.*"]
 ignore_missing_imports = true
 
+# confluent-kafka ships type information but does not re-export the admin
+# types from their package. strict mode forbids relying on implicit re-export,
+# so it is relaxed for this package only rather than importing from a private
+# submodule that could move.
+[[tool.mypy.overrides]]
+module = ["confluent_kafka.*"]
+implicit_reexport = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 # Integration tests need Postgres and Redis running (docker compose up -d).
@@ -72,4 +80,5 @@ markers = [
     "integration: requires live Postgres and Redis",
     "llm: requires a running Ollama with the configured embedding model pulled",
     "sandbox: requires a running Docker daemon and the python:3.11-slim image",
+    "kafka: requires a running Kafka broker (docker compose --profile kafka up -d)",
 ]

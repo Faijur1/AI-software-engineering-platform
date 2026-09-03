@@ -60,7 +60,7 @@ def repository() -> Iterator[uuid.UUID]:
 def _emit_run(trace_id: str, job_id: str) -> None:
     """Publish one full lifecycle through the real bus and recorder."""
     bus = InProcessEventBus()
-    bus.subscribe(TraceRecorder(trace_id))
+    bus.subscribe(TraceRecorder())
     lifecycle: list[tuple[str, dict[str, Any]]] = [
         (events.JOB_STARTED, {"repository": "events-owner/sample", "ref": "main"}),
         (events.SNAPSHOT_FETCHED, {"commit": "a" * 40}),
@@ -72,7 +72,11 @@ def _emit_run(trace_id: str, job_id: str) -> None:
     for sequence, (event_type, payload) in enumerate(lifecycle, start=1):
         bus.publish(
             DomainEvent(
-                event_type=event_type, key=job_id, sequence=sequence, payload=payload
+                event_type=event_type,
+                key=job_id,
+                sequence=sequence,
+                trace_id=trace_id,
+                payload=payload,
             )
         )
 
