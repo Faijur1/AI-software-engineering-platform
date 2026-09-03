@@ -44,6 +44,109 @@ patches for human approval.
 > verified, and what remains. Nothing is described as working until it has
 > actually been run — including the parts that did not work.
 
+## How it works
+
+Every box is a real module or function in this repository, and every arrow is a
+call that exists. Nothing here is aspirational — the parts that are *not* built
+are named in the status table above, not drawn.
+
+```mermaid
+flowchart TD
+    dev(["Developer"])
+
+    subgraph auth["Sign in · the backend owns OAuth, ADR-009"]
+        cb["/auth/github/callback"]
+        enc["encrypt_token · Fernet at rest, never returned by any endpoint"]
+        cb --> enc
+    end
+
+    subgraph ingest["Ingestion · run_index_job on the RQ worker, ADR-003"]
+        snap["fetch_snapshot · tarball, never git clone, ADR-010"]
+        disc["discover + classify · secret files excluded before any other rule"]
+        chunk["chunk_source · tree-sitter AST chunking, ADR-002"]
+        emb["embed_repository · nomic-embed-text, 768 dimensions"]
+        snap --> disc --> chunk --> emb
+    end
+
+    subgraph db["PostgreSQL 16 + pgvector"]
+        files[("files")]
+        chunks[("code_chunks · embedding + generated tsvector")]
+    end
+
+    subgraph rag["Retrieval · retrieve"]
+        vec["vector.search · cosine over HNSW"]
+        kw["keyword.search · Postgres full text"]
+        rrf["reciprocal_rank_fusion · ADR-011"]
+        rank["RoleWeightedReranker · source outranks docs, ADR-012"]
+        ctx["build_context · token budget, sources numbered"]
+        vec --> rrf
+        kw --> rrf
+        rrf --> rank --> ctx
+    end
+
+    consent{"repository.allow_cloud_llm"}
+
+    subgraph llm["Generation · resolve_chat_provider, ADR-013"]
+        local["OllamaChatProvider · nothing leaves the machine"]
+        cloud["GeminiChatProvider · hosted, key sent as a header"]
+    end
+
+    cites["check_citations · coverage and validity, not groundedness"]
+    answer["Answer with numbered citations · every candidate visible in the inspector"]
+
+    subgraph ag["Agent · run_agent, hard iteration cap"]
+        loop["bounded loop · max_iterations_exceeded is terminal, not a failure"]
+        inv["tools.invoke · registry lookup and permission check in code"]
+        patch["validate_patch · applied to a copy, never the snapshot"]
+        approve["approval gate · a human decides, validated and approved kept separate"]
+        loop --> inv
+        loop --> patch --> approve
+    end
+
+    subgraph sbx["Docker sandbox · the hard boundary, ADR-006"]
+        sbxrun["sandbox.run · no network, read only root, uid 65534, no capabilities, killed on timeout"]
+    end
+
+    dev --> cb
+    enc -.->|"the stored token fetches the repository"| snap
+    emb --> files
+    emb --> chunks
+    chunks --> vec
+    chunks --> kw
+
+    dev -->|"question"| rag
+    ctx --> consent
+    consent -->|"false · the default, deny"| local
+    consent -->|"true · granted per repository"| cloud
+    local --> cites
+    cloud --> cites
+    cites --> answer --> dev
+
+    dev -->|"task"| loop
+    inv -->|"search_code"| rag
+    inv -->|"search_symbol, get_repo_structure"| db
+    inv -->|"read_file"| snap
+    inv -->|"run_tests"| sbxrun
+    patch --> sbxrun
+    approve --> dev
+```
+
+Three things the diagram is drawn to make visible, because they are the design
+decisions rather than the plumbing:
+
+**Consent sits between retrieval and generation, not in configuration.**
+`resolve_chat_provider` takes the repository's permission as an argument, so
+there is no path from a question to a hosted model that skips it. A repository
+that has not opted in is answered locally and told so.
+
+**The sandbox is reached only by the two paths that execute code** — `run_tests`
+and patch validation. Everything else the agent can do is a database read or a
+file read inside a snapshot.
+
+**Retrieval is shared.** The agent's `search_code` calls the same `retrieve`
+the chat path uses, so an improvement to ranking benefits both and is measured
+once.
+
 ## Architecture
 
 | Layer | Technology |
