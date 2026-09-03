@@ -20,7 +20,14 @@ def get_queue() -> JobQueue:
     settings = get_settings()
 
     if settings.queue_backend == "kafka":
-        from app.queue.kafka_backend import KafkaJobQueue
+        try:
+            from app.queue.kafka_backend import KafkaJobQueue
+        except ImportError as exc:  # pragma: no cover - depends on the install
+            raise RuntimeError(
+                "QUEUE_BACKEND=kafka but the Kafka extra is not installed. "
+                'Install it with: pip install -e ".[kafka]" -- or set '
+                "QUEUE_BACKEND=rq to use Redis."
+            ) from exc
 
         return KafkaJobQueue(settings)
 

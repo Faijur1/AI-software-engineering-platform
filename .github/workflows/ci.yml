@@ -67,7 +67,12 @@ jobs:
           cache-dependency-path: backend/pyproject.toml
 
       - name: Install
-        run: pip install -e ".[dev]"
+        # The kafka extra is included so the modules that import it are
+        # typechecked. It is optional for a normal install, but code that CI
+        # never typechecks is code CI does not actually cover -- which is how
+        # a missing dependency reached main and failed here rather than
+        # locally, where it had been pip-installed by hand.
+        run: pip install -e ".[dev,kafka]"
 
       # Ordered cheapest-first, so an obvious failure is reported in seconds
       # rather than after the integration tier has run.
@@ -79,6 +84,7 @@ jobs:
         run: mypy
 
       - name: Unit tests
+        id: unit
         run: >-
           pytest -q -m "not integration and not sandbox and not llm"
           --junitxml=unit-report.xml
@@ -88,7 +94,11 @@ jobs:
       # readable from the summary and the API without a token -- which matters
       # when the log is the only copy and reading it needs credentials.
       - name: Report which tests failed
-        if: failure()
+        # Scoped to this step rather than to the job. A blanket failure()
+        # fires after *any* earlier failure, so a typecheck error produced
+        # "No JUnit report was written" annotations that pointed at tests
+        # which had never run -- worse than no annotation at all.
+        if: failure() && steps.unit.conclusion == 'failure'
         run: python scripts/annotate_failures.py unit-report.xml
 
       - name: Migrate
@@ -101,6 +111,7 @@ jobs:
         run: alembic check
 
       - name: Integration tests
+        id: integration
         # "and not llm" is load-bearing. A test carrying both markers -- its
         # file marks integration, the test itself marks llm -- is selected by
         # a bare "-m integration", so the model tier would leak into a job that
@@ -112,7 +123,7 @@ jobs:
       # readable from the summary and the API without a token -- which matters
       # when the log is the only copy and reading it needs credentials.
       - name: Report which tests failed
-        if: failure()
+        if: failure() && steps.integration.conclusion == 'failure'
         run: python scripts/annotate_failures.py integration-report.xml
 
   sandbox:
@@ -133,7 +144,12 @@ jobs:
           cache-dependency-path: backend/pyproject.toml
 
       - name: Install
-        run: pip install -e ".[dev]"
+        # The kafka extra is included so the modules that import it are
+        # typechecked. It is optional for a normal install, but code that CI
+        # never typechecks is code CI does not actually cover -- which is how
+        # a missing dependency reached main and failed here rather than
+        # locally, where it had been pip-installed by hand.
+        run: pip install -e ".[dev,kafka]"
 
       # ADR-006 makes the sandbox a security boundary, so its tests assert
       # things like "the network is unreachable" and "the host filesystem is
@@ -147,6 +163,7 @@ jobs:
         run: docker build -f docker/sandbox.Dockerfile -t aisep-sandbox:latest .
 
       - name: Sandbox tests
+        id: sandbox
         run: pytest -q -m sandbox --junitxml=sandbox-report.xml
 
       # A failed step otherwise reports only "Process completed with exit code
@@ -154,7 +171,7 @@ jobs:
       # readable from the summary and the API without a token -- which matters
       # when the log is the only copy and reading it needs credentials.
       - name: Report which tests failed
-        if: failure()
+        if: failure() && steps.sandbox.conclusion == 'failure'
         run: python scripts/annotate_failures.py sandbox-report.xml
 
   frontend:

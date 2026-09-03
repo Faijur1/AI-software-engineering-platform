@@ -31,6 +31,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Kafka is an optional extra rather than a core dependency: it is demo-only
+# (ADR-004, ADR-005) and a default install should not pull a native driver for
+# a broker most checkouts never start. Every import of it is lazy, inside the
+# function that needs it, so the rest of the system runs without it.
+kafka = ["confluent-kafka>=2.5"]
 dev = [
     "pytest>=8.3",
     "ruff>=0.8",

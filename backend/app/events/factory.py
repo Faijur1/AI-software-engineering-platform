@@ -30,7 +30,17 @@ def get_event_publisher() -> EventPublisher:
     settings = get_settings()
 
     if settings.event_backend == "kafka":
-        from app.events.kafka import KafkaEventPublisher
+        try:
+            from app.events.kafka import KafkaEventPublisher
+        except ImportError as exc:  # pragma: no cover - depends on the install
+            # A bare ModuleNotFoundError here says nothing about what to do.
+            # Kafka is an optional extra precisely so a default install stays
+            # lean, which makes this a configuration mistake worth naming.
+            raise RuntimeError(
+                "EVENT_BACKEND=kafka but the Kafka extra is not installed. "
+                'Install it with: pip install -e ".[kafka]" -- or set '
+                "EVENT_BACKEND=inprocess to run without a broker."
+            ) from exc
 
         return KafkaEventPublisher(settings)
 

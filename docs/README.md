@@ -1107,5 +1107,27 @@ outright — ADR-004 calls them a state machine rather than a stream — so
 `KafkaJobQueue.enqueue_agent_run` delegates to RQ, and a test pins that rather
 than trusting it.
 
+### CI caught a dependency I had only installed by hand
+
+The first push of this milestone failed CI on typecheck while passing locally.
+The cause was mundane and exactly what CI is for: `confluent-kafka` had been
+`pip install`ed into the local environment and never declared, so CI installed
+`.[dev]`, mypy could not find the module, and three files failed to typecheck.
+Reproduced deliberately by uninstalling the package locally, which produced the
+same three `import-not-found` errors.
+
+It is now an **optional extra** rather than a core dependency: Kafka is
+demo-only, every import of it is lazy, and a default install should not pull a
+native driver for a broker most checkouts never start. CI installs
+`.[dev,kafka]`, because code CI never typechecks is code CI does not cover.
+Selecting a Kafka backend without the extra now raises a message naming the
+install command rather than a bare `ModuleNotFoundError`.
+
+The same failure exposed a flaw in the annotations added last milestone. They
+were gated on `failure()`, which fires after *any* earlier step fails, so a
+typecheck error produced two "No JUnit report was written" annotations pointing
+at tests that had never run. Misleading annotations are worse than none, so each
+annotator is now scoped to its own step.
+
 - Quality gate: `ruff` clean, `mypy --strict` clean on 141 files, **427 tests**
   passing with Kafka up and 420 with it down, `alembic check` clean.
