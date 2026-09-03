@@ -16,6 +16,8 @@ from app.core.database import session_scope
 from app.core.errors import AppError
 from app.core.logging import bind_trace_id, get_logger, new_trace_id
 from app.core.security import decrypt_token
+from app.events import DomainEvent, InProcessEventBus, TraceRecorder
+from app.events import types as events
 from app.models.job import Job, JobStatus
 from app.models.repository import IndexStatus, Repository
 from app.models.user import User
@@ -32,20 +34,75 @@ def run_index_job(job_id: str) -> None:
     ``running`` forever is worse than a job marked failed: the user can retry a
     failure, but has no way to interpret a spinner that never stops.
     """
-    bind_trace_id(new_trace_id())
+    trace_id = new_trace_id()
+    bind_trace_id(trace_id)
     identifier = uuid.UUID(job_id)
 
+    # The same id is bound for structured logging and used as the event trace,
+    # so the logs for a run and its trace in the UI share one identifier.
+    emitter = _Emitter(job_id=job_id, trace_id=trace_id)
+
     try:
-        _run(identifier)
+        _run(identifier, emitter)
     except Exception as exc:
         logger.exception("index_job_failed", job_id=job_id, error=str(exc))
+        message = exc.message if isinstance(exc, AppError) else "Indexing failed unexpectedly"
+        # Emitted before the failure is recorded, so a trace exists even if
+        # writing the job row fails too.
+        emitter.emit(events.JOB_FAILED, status="failed", error=message)
         _record_failure(identifier, exc)
         # Re-raised so RQ also records the failure; the database row is already
         # correct either way.
         raise
 
 
-def _run(job_id: uuid.UUID) -> None:
+
+class _Emitter:
+    """Numbers this run's events and hands them to the publisher.
+
+    Sequencing lives with the producer, not the consumer. Under Kafka a
+    consumer may restart mid-run, and a counter held there would silently
+    renumber the tail of a trace; a producer-assigned number is identical on
+    every delivery, which is also what makes redelivery detectable in
+    milestone 3.
+
+    Publishing never raises. An indexing run must not fail because the
+    commentary on it could not be written -- the work is the point. Failures
+    are logged, and the bus already isolates one subscriber from another.
+    """
+
+    def __init__(self, *, job_id: str, trace_id: str) -> None:
+        self.trace_id = trace_id
+        self._job_id = job_id
+        self._sequence = 0
+        bus = InProcessEventBus()
+        # The second consumer (ADR-004). In milestone 2 this becomes a consumer
+        # group rather than a callback, and nothing in this class changes.
+        bus.subscribe(TraceRecorder(trace_id))
+        self._publisher = bus
+
+    def emit(self, event_type: str, **payload: object) -> None:
+        self._sequence += 1
+        status = payload.pop("status", None)
+        try:
+            self._publisher.publish(
+                DomainEvent(
+                    event_type=event_type,
+                    key=self._job_id,
+                    sequence=self._sequence,
+                    status=str(status) if status is not None else None,
+                    payload=dict(payload),
+                )
+            )
+        except Exception:
+            logger.exception(
+                "index_event_not_published",
+                job_id=self._job_id,
+                event_type=event_type,
+            )
+
+
+def _run(job_id: uuid.UUID, emitter: _Emitter) -> None:
     # Imported here rather than at module scope so that importing this module
     # -- which the API does not do -- is what pulls in tree-sitter.
     from app.ingestion.embedder import embed_repository
@@ -81,7 +138,15 @@ def _run(job_id: uuid.UUID) -> None:
         job.status = JobStatus.running
         job.started_at = datetime.now(UTC)
         job.stage = "starting"
+        job.trace_id = emitter.trace_id
         repository.index_status = IndexStatus.indexing
+
+    emitter.emit(
+        events.JOB_STARTED,
+        status="running",
+        repository=f"{owner}/{name}",
+        ref=ref,
+    )
 
     def set_progress(percent: int, stage: str) -> None:
         # A separate short transaction per update, so progress is visible to
@@ -111,6 +176,25 @@ def _run(job_id: uuid.UUID) -> None:
             on_progress=lambda pct, stage: set_progress(_parse_share(pct), stage),
         )
         commit_sha = result.commit_sha
+        # Counted, never estimated -- the same numbers the job row reports.
+        emitter.emit(
+            events.SNAPSHOT_FETCHED,
+            commit=result.commit_sha,
+        )
+        emitter.emit(
+            events.FILES_DISCOVERED,
+            files_seen=result.files_seen,
+            files_indexed=result.files_indexed,
+            files_skipped=result.files_skipped,
+            files_unchanged=result.files_unchanged,
+        )
+        emitter.emit(
+            events.CHUNKS_WRITTEN,
+            chunks_created=result.chunks_created,
+            chunks_deleted=result.chunks_deleted,
+            languages=result.languages,
+            fallback_files=result.fallback_files,
+        )
 
     with session_scope() as session:
         embed_repository(
@@ -122,6 +206,7 @@ def _run(job_id: uuid.UUID) -> None:
                 _embed_share(done, total), f"embedding ({done}/{total})"
             ),
         )
+        emitter.emit(events.EMBEDDINGS_WRITTEN)
 
     with session_scope() as session:
         job = session.get(Job, job_id)
@@ -136,6 +221,8 @@ def _run(job_id: uuid.UUID) -> None:
             repository.index_status = IndexStatus.indexed
             repository.current_commit = commit_sha
             repository.indexed_at = datetime.now(UTC)
+
+    emitter.emit(events.JOB_COMPLETED, status="succeeded", commit=commit_sha)
 
 
 def _record_failure(job_id: uuid.UUID, exc: Exception) -> None:

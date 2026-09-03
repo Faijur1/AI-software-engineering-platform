@@ -949,3 +949,78 @@ is large enough to move a held-out benchmark. Fixing it means tuning the
 weights, and the weights were tuned on the dev set — so retuning them now would
 need a fresh held-out set to stay honest. That work is not done, and the number
 above is the current one rather than the best one ever recorded.
+
+---
+
+## Stage 3, milestone 1 — the indexing event contract
+
+Scope agreed before starting: **Kafka locally, no AWS, no Kubernetes.** The
+reasoning for dropping Kubernetes is measured and recorded in ADR-005 rather
+than left as a preference.
+
+### The trigger came first
+
+ADR-004 ends with a condition: *adopt only once a second real consumer of
+indexing events exists.* When this milestone started there was exactly one — the
+indexer itself. Introducing Kafka at that point would have contradicted the
+project's own recorded decision, so the second consumer was built first and the
+broker comes next.
+
+### What exists now
+
+Indexing emits a **closed vocabulary of seven facts**: `job_started`,
+`snapshot_fetched`, `files_discovered`, `chunks_written`, `embeddings_written`,
+`job_completed`, `job_failed`. An event type outside that set raises at
+construction rather than being published, because an unknown type would be
+written, persisted and replayed forever before anyone noticed consumers quietly
+skipping it.
+
+A **trace recorder** consumes those events independently of the indexer. It
+holds no indexing logic, it can fail without affecting a run, and it writes into
+the `events` table the agent already uses — so an indexing run is now
+inspectable through the same endpoint and the same replay UI. Before this it
+showed a progress bar and, once finished, nothing anyone could examine.
+
+Three rules the contract is built on, each for a reason that bites later:
+
+- **Events are facts, not instructions.** `files_discovered` says what was
+  found; it does not tell a consumer to act. That is what lets a second consumer
+  exist without touching the first.
+- **Payloads carry counts, never content.** An event log is durable and
+  replayable, so repository content written into it would outlive every control
+  governing where that code may go. Asserted by a test over real emitted events.
+- **Sequence numbers come from the producer.** A consumer may restart mid-run
+  under Kafka, and a counter held there would silently renumber the tail of a
+  trace.
+
+### What is deliberately still missing
+
+The publisher is in-process: synchronous, no durability, no replay, and
+exactly-once by construction. That last property is a trap rather than a
+feature, and it is why subscribers are already required to be idempotent by
+contract — an assumption of exactly-once delivery is invisible in the code and
+surfaces later as duplicated rows.
+
+| | in process (now) | Kafka (milestone 2) |
+| --- | --- | --- |
+| durability | none, lost on crash | on disk, retained |
+| replay | impossible | from any offset |
+| a slow consumer | blocks the producer | falls behind alone |
+| delivery | exactly once | at least once, needs idempotency |
+
+### Verified
+
+A real indexing run against the live worker produced a trace end to end: the job
+recorded its `trace_id`, emitted `index.job_started` and then
+`index.job_failed`, the recorder persisted both, and the trace endpoint returned
+them through the **job**-based authorisation added here — a path that did not
+exist before, since the endpoint previously knew only about agent runs.
+
+That run failed for an unrelated reason: the stored GitHub token had expired.
+It is reported as a verification rather than hidden, because it exercised the
+failure path and the new authorisation, and because **the success path is
+covered by tests but has not yet been confirmed by a live run** — that needs a
+fresh GitHub sign-in.
+
+- Quality gate: `ruff` clean, `mypy --strict` clean on 134 files, **420 tests**
+  passing, `alembic check` clean.

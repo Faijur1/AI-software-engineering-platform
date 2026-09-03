@@ -52,6 +52,13 @@ class Job(UUIDPrimaryKey, Timestamps, Base):
     # Short human-readable stage, e.g. "parsing files".
     stage: Mapped[str | None] = mapped_column(String(64))
 
+    # Correlates this job with its event trace and its log lines: the worker
+    # binds this same id for structured logging, so a trace in the UI and the
+    # logs for that run share one identifier. Nullable because jobs created
+    # before indexing emitted events have none, and backfilling an id that was
+    # never used for anything would invent a correlation that does not exist.
+    trace_id: Mapped[str | None] = mapped_column(String(32), index=True)
+
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # Failure reason, safe to show the user. Stack traces stay in the logs.

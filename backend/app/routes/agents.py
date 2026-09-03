@@ -22,6 +22,7 @@ from app.core.errors import NotFoundError, ValidationError
 from app.core.logging import get_logger, new_trace_id
 from app.models.agent import AgentRun, Event
 from app.models.chunk import CodeChunk
+from app.models.job import Job
 from app.models.repository import Repository
 from app.queue import get_queue
 from app.schemas.agent import (
@@ -162,14 +163,21 @@ def get_trace(trace_id: str, user: CurrentUser, session: DbSession) -> TraceResp
     Ordered by sequence rather than timestamp: two events can land in the same
     millisecond, and an ordering that sometimes inverts is worse than none.
     """
-    # Authorised through the run that owns the trace, so a guessed trace id
-    # discloses nothing.
-    owned = session.execute(
+    # Authorised through whatever owns the trace, so a guessed trace id
+    # discloses nothing. Two kinds of run produce traces now: agent runs, and
+    # indexing jobs (ADR-004). Both reach a user the same way, through the
+    # repository, and a trace belonging to neither is reported as absent.
+    owned_by_run = session.execute(
         select(AgentRun.trace_id)
         .join(Repository, Repository.id == AgentRun.repository_id)
         .where(AgentRun.trace_id == trace_id, Repository.user_id == user.id)
     ).scalar_one_or_none()
-    if owned is None:
+    owned_by_job = session.execute(
+        select(Job.trace_id)
+        .join(Repository, Repository.id == Job.repository_id)
+        .where(Job.trace_id == trace_id, Repository.user_id == user.id)
+    ).scalar_one_or_none()
+    if owned_by_run is None and owned_by_job is None:
         raise NotFoundError("Trace not found")
 
     events = list(
