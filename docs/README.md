@@ -1129,5 +1129,30 @@ typecheck error produced two "No JUnit report was written" annotations pointing
 at tests that had never run. Misleading annotations are worse than none, so each
 annotator is now scoped to its own step.
 
-- Quality gate: `ruff` clean, `mypy --strict` clean on 141 files, **427 tests**
-  passing with Kafka up and 420 with it down, `alembic check` clean.
+### And a second CI failure, from the same root
+
+Fixing the dependency exposed the next problem underneath it. The Kafka tests
+carried only the `kafka` marker, and CI's default tier selected
+`not integration and not sandbox and not llm` — so they ran in the unit job,
+against a broker that was not there. Locally they had passed because a broker
+*was* there.
+
+This time the annotations worked: scoped to their own step, they named all seven
+failing tests and the transport error behind them, and the diagnosis took one
+reading rather than a reproduction.
+
+Two fixes, because either alone would leave a gap. The tiers now partition the
+suite exactly — 275 unit, 123 integration, 7 kafka, 24 sandbox, 6 llm, summing
+to the whole 435 — and **CI runs a Kafka broker as a service container**, so the
+tier is genuinely exercised rather than merely written. The same principle as
+the dependency: tests CI never runs are tests CI does not cover.
+
+`tests/unit/test_ci_tiers.py` pins it. It parses the workflow and the marker
+declarations and checks them against each other, so a marker added without
+updating the selectors fails immediately instead of silently running its tests
+in a job that has none of what they need. Verified by reintroducing the original
+bug, which produces: *the default CI tier does not exclude ['kafka'], so those
+tests run in it.*
+
+- Quality gate: `ruff` clean, `mypy --strict` clean on 142 files, **430 tests**
+  passing with Kafka up, `alembic check` clean.

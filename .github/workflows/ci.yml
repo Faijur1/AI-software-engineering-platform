@@ -52,6 +52,26 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 20
+      # A broker, so the kafka tier is actually run rather than merely written.
+      # The same lesson as the missing dependency: tests CI never runs are tests
+      # CI does not cover. KRaft, single node, matching docker-compose.yml.
+      kafka:
+        image: apache/kafka:3.9.0
+        ports: ["9092:9092"]
+        env:
+          KAFKA_NODE_ID: 1
+          KAFKA_PROCESS_ROLES: broker,controller
+          KAFKA_CONTROLLER_QUORUM_VOTERS: "1@localhost:9093"
+          KAFKA_LISTENERS: "PLAINTEXT://:9092,CONTROLLER://:9093"
+          KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://localhost:9092"
+          KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT"
+          KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+          KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+          KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+          KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+          KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+          KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+          CLUSTER_ID: "aisep-ci-cluster-0001"
 
     defaults:
       run:
@@ -86,7 +106,7 @@ jobs:
       - name: Unit tests
         id: unit
         run: >-
-          pytest -q -m "not integration and not sandbox and not llm"
+          pytest -q -m "not integration and not sandbox and not llm and not kafka"
           --junitxml=unit-report.xml
 
       # A failed step otherwise reports only "Process completed with exit code
@@ -116,7 +136,9 @@ jobs:
         # file marks integration, the test itself marks llm -- is selected by
         # a bare "-m integration", so the model tier would leak into a job that
         # has no model.
-        run: pytest -q -m "integration and not llm" --junitxml=integration-report.xml
+        run: >-
+          pytest -q -m "integration and not llm and not kafka"
+          --junitxml=integration-report.xml
 
       # A failed step otherwise reports only "Process completed with exit code
       # 1". Annotations are public run metadata, so the failing test names are
@@ -125,6 +147,14 @@ jobs:
       - name: Report which tests failed
         if: failure() && steps.integration.conclusion == 'failure'
         run: python scripts/annotate_failures.py integration-report.xml
+
+      - name: Kafka tests
+        id: kafka
+        run: pytest -q -m kafka --junitxml=kafka-report.xml
+
+      - name: Report which tests failed
+        if: failure() && steps.kafka.conclusion == 'failure'
+        run: python scripts/annotate_failures.py kafka-report.xml
 
   sandbox:
     name: Sandbox
