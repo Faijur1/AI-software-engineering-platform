@@ -129,6 +129,43 @@ flowchart TD
     inv -->|"run_tests"| sbxrun
     patch --> sbxrun
     approve --> dev
+
+    %% ---- styling -------------------------------------------------------
+    %% Fills and text colours are set explicitly rather than left to the
+    %% theme, because GitHub renders this in both light and dark mode and a
+    %% palette that only works in one of them is worse than none.
+    classDef cActor   fill:#f1f5f9,stroke:#0f172a,stroke-width:2px,color:#0f172a
+    classDef cAuth    fill:#fde68a,stroke:#b45309,stroke-width:1px,color:#0f172a
+    classDef cIngest  fill:#bfdbfe,stroke:#1d4ed8,stroke-width:1px,color:#0f172a
+    classDef cStore   fill:#e2e8f0,stroke:#475569,stroke-width:1px,color:#0f172a
+    classDef cRag     fill:#a7f3d0,stroke:#047857,stroke-width:1px,color:#0f172a
+    classDef cGate    fill:#fbcfe8,stroke:#be185d,stroke-width:2px,color:#0f172a
+    classDef cGen     fill:#ddd6fe,stroke:#6d28d9,stroke-width:1px,color:#0f172a
+    classDef cAgent   fill:#fed7aa,stroke:#c2410c,stroke-width:1px,color:#0f172a
+    classDef cSandbox fill:#fecaca,stroke:#b91c1c,stroke-width:2px,color:#0f172a
+    classDef cOut     fill:#d9f99d,stroke:#4d7c0f,stroke-width:2px,color:#0f172a
+
+    class dev cActor
+    class cb,enc cAuth
+    class snap,disc,chunk,emb cIngest
+    class files,chunks cStore
+    class vec,kw,rrf,rank,ctx cRag
+    class consent cGate
+    class local,cloud cGen
+    class cites,answer cOut
+    class loop,inv,patch,approve cAgent
+    class sbxrun cSandbox
+
+    %% Group outlines only, with no fill: a subgraph title is drawn in the
+    %% theme's own text colour, so tinting the band behind it would make the
+    %% title unreadable in one theme or the other.
+    style auth   fill:none,stroke:#b45309,stroke-width:2px
+    style ingest fill:none,stroke:#1d4ed8,stroke-width:2px
+    style db     fill:none,stroke:#475569,stroke-width:2px
+    style rag    fill:none,stroke:#047857,stroke-width:2px
+    style llm    fill:none,stroke:#6d28d9,stroke-width:2px
+    style ag     fill:none,stroke:#c2410c,stroke-width:2px
+    style sbx    fill:none,stroke:#b91c1c,stroke-width:2px
 ```
 
 Three things the diagram is drawn to make visible, because they are the design
