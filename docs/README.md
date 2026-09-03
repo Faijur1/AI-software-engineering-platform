@@ -11,7 +11,6 @@
 | [security.md](security.md) | Trust boundaries, secrets, sandbox, prompt injection |
 | [deployment.md](deployment.md) | Local development now; Stage 3 cloud target |
 | [adr/](adr/) | Architecture decision records |
-| [PRD.pdf.pdf](PRD.pdf.pdf) | Original product requirements document |
 
 ## Implementation status
 
