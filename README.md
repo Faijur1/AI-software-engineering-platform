@@ -6,7 +6,7 @@ to help with real software engineering tasks: answering questions about the
 code, investigating bugs, running tests safely in a sandbox, and proposing
 patches for human approval.
 
-> ### Current status: Stage 1 complete
+> ### Current status: Stage 1 complete; Stage 3 partially built, locally
 >
 > Ingestion, retrieval, the evaluation harness, the inspector, the agent loop,
 > the Docker sandbox and the patch approval gate are all built and tested, and
@@ -39,6 +39,19 @@ patches for human approval.
 > permission is per repository, defaults to deny, and a repository that has not
 > opted in is answered locally with the downgrade stated in the response
 > ([`docs/security.md`](docs/security.md)).
+>
+> **Indexing events go to a durable log, and consumers recover by replay.**
+> Kafka carries indexing events behind the same interface Redis/RQ uses, so an
+> indexing run completes whether or not anything is listening, and a consumer
+> that was down catches up afterwards. Delivery is at-least-once, which makes
+> idempotency mandatory rather than optional: it is enforced by a uniqueness
+> constraint, and a replay of an already-recorded log writes nothing
+> ([ADR-004](docs/adr/ADR-004-kafka-stage3.md)).
+>
+> Kafka is **off by default** and starts only on request, so a fresh checkout
+> needs no broker. Kubernetes and AWS are deliberately *not* built, for reasons
+> measured rather than assumed
+> ([ADR-005](docs/adr/ADR-005-kubernetes-worker-scaling.md)).
 >
 > [`docs/README.md`](docs/README.md) tracks exactly what is built, what is
 > verified, and what remains. Nothing is described as working until it has
@@ -191,7 +204,8 @@ once.
 | Frontend | Next.js 16, React 19, TypeScript (strict), Tailwind |
 | Backend | FastAPI, Python 3.11, SQLAlchemy 2, Pydantic v2 |
 | Database | PostgreSQL 16 + pgvector |
-| Queue | Redis + RQ (ADR-003) |
+| Queue | Redis + RQ (ADR-003); Kafka behind the same interface, off by default |
+| Events | Indexing events to Kafka, consumed independently, replayable (ADR-004) |
 | Parsing | tree-sitter, AST-aware chunking (ADR-002) |
 | Embeddings | Ollama — `nomic-embed-text`, 768-dim, pgvector + HNSW |
 | Retrieval | Hybrid: pgvector cosine + Postgres full-text, RRF-fused (ADR-011) |
@@ -199,7 +213,7 @@ once.
 | LLM | Selectable: Ollama (local) or Gemini, behind one `ChatProvider` (ADR-013) |
 | Auth | GitHub OAuth, backend-owned; signed HttpOnly session cookie |
 | Sandbox | Docker, isolated per run (ADR-006) |
-| CI | GitHub Actions — lint, types, unit, integration, sandbox, frontend build |
+| CI | GitHub Actions — lint, types, unit, integration, kafka, sandbox, frontend build |
 
 Design documents and architecture decision records live in [`docs/`](docs/).
 Start with [`docs/hld.md`](docs/hld.md), or

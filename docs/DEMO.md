@@ -1,6 +1,7 @@
 # Demo script
 
-A five-minute walkthrough, in the order that makes the strongest honest case.
+A five-minute walkthrough, in the order that makes the strongest honest case,
+plus an optional ninety-second section 7 if Kafka is running.
 
 The ordering principle: **lead with what is measured.** The retrieval numbers,
 the inspector, the sandbox properties, CI and the consent gate are all things
@@ -40,6 +41,12 @@ Checklist, each item earned by something that went wrong at least once:
       working; allowed shows good answers. The script below uses both.
 - [ ] **One uvicorn only.** `netstat -ano | findstr :8000` should list a single
       PID. Duplicates hold the port and serve stale code.
+- [ ] **Only if showing section 7:** start the broker and leave the trace
+      consumer *stopped*. The whole point of that section is the system running
+      without it.
+      ```bash
+      docker compose --profile kafka up -d
+      ```
 
 ---
 
@@ -155,6 +162,77 @@ frontend build — on every push.
 > a directory per patch validation. That is a disk-exhaustion bug in the
 > deployment target, found by automation rather than by a user.
 
+### 7. Optional — the event log survives its consumer being down — 90 seconds
+
+Skip this if Kafka is not running; the system does not need it, which is itself
+the point of the profile gate. If it is running, this is the most demonstrable
+thing in Stage 3, because it shows a property the simple implementation
+structurally cannot have.
+
+Add the line below to `.env` — it is absent by default, which is why a fresh
+checkout runs with no broker at all — then restart the ingestion worker so it
+picks it up. Leave the trace consumer **stopped**.
+
+```bash
+EVENT_BACKEND=kafka
+```
+
+Restore it to `inprocess` (or delete the line) afterwards if you want the
+default behaviour back.
+
+**Step 1 — index with nobody listening.** Trigger a re-index from
+`/repositories`. It completes normally.
+
+**Step 2 — show the trace is empty.** Open the run's trace: no events. Say
+plainly that they are not lost, they are waiting.
+
+```bash
+docker exec aisep-kafka /opt/kafka/bin/kafka-get-offsets.sh   --bootstrap-server localhost:9092 --topic aisep.indexing.v1
+```
+
+The offset has advanced by six. The events exist; nothing has read them.
+
+**Step 3 — start the consumer and watch it catch up.**
+
+```bash
+cd backend && ./.venv/Scripts/python.exe -m app.workers.events_consumer
+```
+
+Reload the trace. The full six-event lifecycle is there — `job_started`,
+`snapshot_fetched`, `files_discovered`, `chunks_written`, `embeddings_written`,
+`job_completed` — with the real counts from that run.
+
+**Step 4 — replay, twice.** This is the part worth doing slowly.
+
+```bash
+./.venv/Scripts/python.exe -m app.workers.replay_events
+./.venv/Scripts/python.exe -m app.workers.replay_events
+```
+
+```
+replay #1     replay #2
+delivered 6   delivered 6
+written   6   written   0
+```
+
+> Under the in-process implementation, step 1 is not a state the system can be
+> in: the recorder lives inside the producer, so "stop the consumer" is not
+> something you can do. That is the difference a log makes, and it is why
+> ADR-004 required a second consumer to exist before adopting one.
+>
+> The two replay numbers differing is the delivery guarantee made visible.
+> At-least-once means a redelivery is normal, and the second pass writing
+> nothing is idempotency demonstrated rather than asserted. It is enforced by a
+> uniqueness constraint on `(trace_id, sequence)`, not by a convention — and
+> before that constraint existed, replaying while building this left one run
+> holding 78 rows for a six-event lifecycle.
+
+**If asked why Kafka at all for a single-user tool:** it earns nothing on
+throughput here and that is stated in the docs rather than dressed up. What it
+earns is the property just demonstrated — consumers that fail independently and
+recover by replay — and ADR-004 required a second real consumer to exist before
+it was adopted, which is why the trace recorder was built first.
+
 ---
 
 ## Questions worth pre-empting
@@ -190,6 +268,8 @@ improvement unattributable.
 | Health shows Degraded | A dependency is down | `docker compose up -d`; the panel names which one |
 | Sandbox tests fail to start | Image not built | `docker build -f docker/sandbox.Dockerfile -t aisep-sandbox:latest .` |
 | Stale behaviour after a code change | More than one uvicorn on :8000 | `taskkill /T /F /PID <pid>`, start one |
+| Section 7 shows events immediately | The consumer was already running | Stop it; the demonstration needs it down |
+| Kafka offsets read 0 after a restart | Broker recreated without its volume | Expected only if `KAFKA_LOG_DIRS` is unset; it is set in compose |
 
 If a live model call fails mid-demo, say what happened and move on. The
 project's whole posture is that measured limits are stated rather than hidden,
