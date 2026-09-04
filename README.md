@@ -73,17 +73,47 @@ flowchart TD
         cb --> enc
     end
 
-    subgraph ingest["Ingestion · run_index_job on the RQ worker, ADR-003"]
+    subgraph dispatch["Dispatch · get_queue, the ADR-003 seam"]
+        qfac["get_queue · configuration picks the backend"]
+        rqq["RQJobQueue · Redis, the default"]
+        kjq["KafkaJobQueue · an enqueue survives the queue being down"]
+        jobtopic[("aisep.jobs.indexing.v1")]
+        cjobs["consume_jobs · offset committed after the job finishes"]
+        qfac --> rqq
+        qfac --> kjq
+        kjq --> jobtopic --> cjobs
+    end
+
+    subgraph ingest["Ingestion · run_index_job on a worker"]
+        job["run_index_job · owns the job lifecycle, always reaches a terminal state"]
         snap["fetch_snapshot · tarball, never git clone, ADR-010"]
         disc["discover + classify · secret files excluded before any other rule"]
         chunk["chunk_source · tree-sitter AST chunking, ADR-002"]
         emb["embed_repository · nomic-embed-text, 768 dimensions"]
-        snap --> disc --> chunk --> emb
+        job --> snap --> disc --> chunk --> emb
+    end
+
+    subgraph evt["Indexing events · get_event_publisher, the ADR-004 seam"]
+        efac["get_event_publisher · configuration picks the backend"]
+        bus["InProcessEventBus · synchronous, no durability, no replay"]
+        kpub["KafkaEventPublisher · idempotent producer, acks all"]
+        evtopic[("aisep.indexing.v1 · retained and replayable")]
+        cons["consume · at least once, offset committed after handling"]
+        rec["TraceRecorder · insert or ignore, so a redelivery writes once"]
+        rep["replay · a fresh consumer group, worker offsets untouched"]
+        efac --> bus
+        efac --> kpub
+        kpub --> evtopic --> cons
+        bus --> rec
+        cons --> rec
+        rep --> cons
     end
 
     subgraph db["PostgreSQL 16 + pgvector"]
         files[("files")]
         chunks[("code_chunks · embedding + generated tsvector")]
+        jobs[("jobs · status, progress, trace_id")]
+        evrows[("events · unique per trace and sequence")]
     end
 
     subgraph rag["Retrieval · retrieve"]
@@ -118,15 +148,26 @@ flowchart TD
 
     subgraph sbx["Docker sandbox · the hard boundary, ADR-006"]
         sbxrun["sandbox.run · no network, read only root, uid 65534, no capabilities, killed on timeout"]
+        clean["remove_workspace · root container fallback, so untrusted code cannot leak disk"]
+        sbxrun --> clean
     end
+
+    traces["/traces/{trace_id} · owned by an agent run or an indexing job"]
 
     dev --> cb
     enc -.->|"the stored token fetches the repository"| snap
+    dev -->|"index this repository"| qfac
+    rqq --> job
+    cjobs --> job
+    job --> jobs
     emb --> files
     emb --> chunks
+    job -->|"seven facts, counts never content"| efac
+    rec --> evrows
+    dev --> traces --> evrows
+
     chunks --> vec
     chunks --> kw
-
     dev -->|"question"| rag
     ctx --> consent
     consent -->|"false · the default, deny"| local
@@ -147,38 +188,44 @@ flowchart TD
     %% Fills and text colours are set explicitly rather than left to the
     %% theme, because GitHub renders this in both light and dark mode and a
     %% palette that only works in one of them is worse than none.
-    classDef cActor   fill:#f1f5f9,stroke:#0f172a,stroke-width:2px,color:#0f172a
-    classDef cAuth    fill:#fde68a,stroke:#b45309,stroke-width:1px,color:#0f172a
-    classDef cIngest  fill:#bfdbfe,stroke:#1d4ed8,stroke-width:1px,color:#0f172a
-    classDef cStore   fill:#e2e8f0,stroke:#475569,stroke-width:1px,color:#0f172a
-    classDef cRag     fill:#a7f3d0,stroke:#047857,stroke-width:1px,color:#0f172a
-    classDef cGate    fill:#fbcfe8,stroke:#be185d,stroke-width:2px,color:#0f172a
-    classDef cGen     fill:#ddd6fe,stroke:#6d28d9,stroke-width:1px,color:#0f172a
-    classDef cAgent   fill:#fed7aa,stroke:#c2410c,stroke-width:1px,color:#0f172a
-    classDef cSandbox fill:#fecaca,stroke:#b91c1c,stroke-width:2px,color:#0f172a
-    classDef cOut     fill:#d9f99d,stroke:#4d7c0f,stroke-width:2px,color:#0f172a
+    classDef cActor    fill:#f1f5f9,stroke:#0f172a,stroke-width:2px,color:#0f172a
+    classDef cAuth     fill:#fde68a,stroke:#b45309,stroke-width:1px,color:#0f172a
+    classDef cDispatch fill:#a5f3fc,stroke:#0e7490,stroke-width:1px,color:#0f172a
+    classDef cIngest   fill:#bfdbfe,stroke:#1d4ed8,stroke-width:1px,color:#0f172a
+    classDef cEvent    fill:#fcd34d,stroke:#92400e,stroke-width:1px,color:#0f172a
+    classDef cStore    fill:#e2e8f0,stroke:#475569,stroke-width:1px,color:#0f172a
+    classDef cRag      fill:#a7f3d0,stroke:#047857,stroke-width:1px,color:#0f172a
+    classDef cGate     fill:#fbcfe8,stroke:#be185d,stroke-width:2px,color:#0f172a
+    classDef cGen      fill:#ddd6fe,stroke:#6d28d9,stroke-width:1px,color:#0f172a
+    classDef cAgent    fill:#fed7aa,stroke:#c2410c,stroke-width:1px,color:#0f172a
+    classDef cSandbox  fill:#fecaca,stroke:#b91c1c,stroke-width:2px,color:#0f172a
+    classDef cOut      fill:#d9f99d,stroke:#4d7c0f,stroke-width:2px,color:#0f172a
 
     class dev cActor
     class cb,enc cAuth
-    class snap,disc,chunk,emb cIngest
-    class files,chunks cStore
+    class qfac,rqq,kjq,jobtopic,cjobs cDispatch
+    class job,snap,disc,chunk,emb cIngest
+    class efac,bus,kpub,evtopic,cons,rec,rep cEvent
+    class files,chunks,jobs,evrows cStore
     class vec,kw,rrf,rank,ctx cRag
     class consent cGate
     class local,cloud cGen
-    class cites,answer cOut
+    class cites,answer,traces cOut
     class loop,inv,patch,approve cAgent
-    class sbxrun cSandbox
+    class sbxrun,clean cSandbox
 
     %% Group outlines only, with no fill: a subgraph title is drawn in the
     %% theme's own text colour, so tinting the band behind it would make the
     %% title unreadable in one theme or the other.
-    style auth   fill:none,stroke:#b45309,stroke-width:2px
-    style ingest fill:none,stroke:#1d4ed8,stroke-width:2px
-    style db     fill:none,stroke:#475569,stroke-width:2px
-    style rag    fill:none,stroke:#047857,stroke-width:2px
-    style llm    fill:none,stroke:#6d28d9,stroke-width:2px
-    style ag     fill:none,stroke:#c2410c,stroke-width:2px
-    style sbx    fill:none,stroke:#b91c1c,stroke-width:2px
+    style auth     fill:none,stroke:#b45309,stroke-width:2px
+    style dispatch fill:none,stroke:#0e7490,stroke-width:2px
+    style ingest   fill:none,stroke:#1d4ed8,stroke-width:2px
+    style evt      fill:none,stroke:#92400e,stroke-width:2px
+    style db       fill:none,stroke:#475569,stroke-width:2px
+    style rag      fill:none,stroke:#047857,stroke-width:2px
+    style llm      fill:none,stroke:#6d28d9,stroke-width:2px
+    style ag       fill:none,stroke:#c2410c,stroke-width:2px
+    style sbx      fill:none,stroke:#b91c1c,stroke-width:2px
 ```
 
 Three things the diagram is drawn to make visible, because they are the design
@@ -196,6 +243,15 @@ file read inside a snapshot.
 **Retrieval is shared.** The agent's `search_code` calls the same `retrieve`
 the chat path uses, so an improvement to ranking benefits both and is measured
 once.
+
+**Two seams have two implementations each, and the diagram shows both sides.**
+`get_queue` chooses how work is dispatched and `get_event_publisher` chooses
+where events go; callers see neither choice. The Kafka paths are off by default
+— a fresh checkout runs the whole diagram without a broker — and they exist
+because a durable log lets a consumer be down while indexing continues, then
+catch up. `replay` reads the log again with a fresh consumer group, which is
+only safe because `TraceRecorder` writes insert-or-ignore against a uniqueness
+constraint.
 
 ## Architecture
 
