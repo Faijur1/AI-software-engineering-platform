@@ -66,6 +66,11 @@ services:
       # shares 3.7 GB with Postgres, Redis and everything else.
       KAFKA_HEAP_OPTS: "-Xms256m -Xmx512m"
       CLUSTER_ID: "aisep-local-cluster-0001"
+      # Point the broker at the mounted volume. Without this it writes to
+      # /tmp/kafka-logs inside the container and the volume below is
+      # decorative: the log survives a restart but not a recreate, which
+      # quietly contradicts the durability the whole design rests on.
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
     volumes:
       - kafka_data:/var/lib/kafka/data
     healthcheck:

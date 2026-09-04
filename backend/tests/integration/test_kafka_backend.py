@@ -247,3 +247,77 @@ def test_agent_runs_are_not_carried_on_kafka() -> None:
     source = inspect.getsource(KafkaJobQueue.enqueue_agent_run)
 
     assert "get_rq_queue" in source
+
+
+# --- replay and redelivery, through the broker ------------------------------
+
+
+def test_consuming_the_same_log_twice_writes_the_rows_once(trace_id: str) -> None:
+    """Replay rebuilds the trace store rather than multiplying it.
+
+    Two independent consumer groups read the same log from offset 0, so every
+    event is delivered twice in total. Before the uniqueness constraint this
+    doubled the rows -- the migration that added it had to delete 917 of them.
+    """
+    job_id = str(uuid.uuid4())
+    publisher = KafkaEventPublisher(_kafka_settings())
+    for event in _lifecycle(trace_id, job_id):
+        publisher.publish(event)
+
+    first = consume(
+        TraceRecorder(),
+        group_id=f"replay-a-{uuid.uuid4().hex}",
+        from_start=True,
+        until_drained=True,
+    )
+    after_first = len(_recorded(trace_id))
+
+    second = consume(
+        TraceRecorder(),
+        group_id=f"replay-b-{uuid.uuid4().hex}",
+        from_start=True,
+        until_drained=True,
+    )
+    after_second = len(_recorded(trace_id))
+
+    assert first >= 6 and second >= 6, "both groups must have seen the events"
+    assert after_first == 6
+    assert after_second == 6, "the second pass must write nothing new"
+
+
+def test_replay_reports_delivered_and_written_separately(trace_id: str) -> None:
+    """The two numbers differing is the demonstration.
+
+    A healthy replay delivers everything and writes nothing, and a caller can
+    only see that if the counts are reported apart rather than collapsed into
+    one "processed" figure.
+    """
+    from app.events.replay import replay
+
+    job_id = str(uuid.uuid4())
+    publisher = KafkaEventPublisher(_kafka_settings())
+    for event in _lifecycle(trace_id, job_id):
+        publisher.publish(event)
+
+    first = replay(_kafka_settings())
+    second = replay(_kafka_settings())
+
+    assert first.events_delivered >= 6
+    assert second.events_delivered == first.events_delivered, "same log, same delivery"
+    assert second.rows_written == 0, "nothing new on a second pass"
+
+
+def test_a_replay_leaves_the_workers_offsets_alone(trace_id: str) -> None:
+    """Replay uses a fresh group so the running worker keeps its position.
+
+    Resetting the worker's offsets instead would make a replay and a restart
+    indistinguishable, and would reprocess the backlog on the worker's own
+    consumer while it was trying to keep up with live events.
+    """
+    import inspect
+
+    from app.events import replay as replay_module
+
+    source = inspect.getsource(replay_module.replay)
+
+    assert "group_id or f\"replay-" in source

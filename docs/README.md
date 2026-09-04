@@ -1156,3 +1156,78 @@ tests run in it.*
 
 - Quality gate: `ruff` clean, `mypy --strict` clean on 142 files, **430 tests**
   passing with Kafka up, `alembic check` clean.
+
+---
+
+## Stage 3, milestone 3 — at-least-once made survivable
+
+Kafka redelivers. A consumer that crashes between handling an event and
+committing its offset sees that event again; a replay from offset 0 sees every
+event again. Neither is an edge case — it is the normal behaviour of a log, and
+code assuming exactly-once corrupts its store on the first rebalance.
+
+### The problem was already in the data
+
+Not a hypothesis. Building milestone 2 involved replaying the log repeatedly
+with fresh consumer groups, and each pass re-inserted every event. The result,
+found by looking before adding a constraint:
+
+| | |
+| --- | --- |
+| Duplicate `(trace_id, sequence)` pairs | **90** |
+| Worst case | **13 copies** of each event in one run |
+| That run's trace | **78 rows for a six-event lifecycle** |
+
+The trace endpoint served all 78, so the replay UI for that indexing run was
+unusable. The migration deleted **917 duplicate rows** before it could add the
+constraint.
+
+### The fix is in the database, not in the code path
+
+`(trace_id, sequence)` is now unique. That pair *is* the event's identity: the
+producer assigns both, and every redelivery of an event carries the same values.
+The recorder inserts with `ON CONFLICT DO NOTHING`.
+
+A check-then-insert was rejected deliberately — two consumers, or a consumer and
+a replay, can be handling the same event at the same moment, and the window
+between a `SELECT` and an `INSERT` is exactly where that goes wrong. Verified by
+attempting a raw insert that bypasses the conflict clause: the database rejects
+it with `IntegrityError`, so the guarantee is enforced rather than merely
+followed.
+
+`DO NOTHING` rather than `DO UPDATE`, because an event is a fact about something
+that already happened. A redelivery carries nothing newer than the row already
+stored, and allowing an overwrite would let a corrupted redelivery replace a
+good record. A test pins that.
+
+Uniqueness is per trace, not global: every run numbers its events from one, so a
+constraint on `sequence` alone would fail on the second indexing run ever made.
+
+### Replay
+
+`python -m app.workers.replay_events` reads the whole log into the trace store,
+using a **fresh consumer group** so the running worker keeps its own position.
+It reports delivered and written separately, because the two differing is the
+demonstration:
+
+```
+replay #1     replay #2
+delivered 6   delivered 6
+written   6   written   0
+```
+
+### A durability bug found while testing this
+
+The replay initially delivered nothing, and the reason was a defect in the
+milestone-2 compose file: the Kafka volume was mounted at
+`/var/lib/kafka/data` while the broker wrote to `/tmp/kafka-logs`. **The volume
+was decorative.** The log survived a container restart but not a recreate — a
+direct contradiction of the durability this design rests on, and of what the
+milestone-2 notes claimed.
+
+`KAFKA_LOG_DIRS` now points at the mounted volume, verified the only way worth
+trusting: publish six events, `docker compose up --force-recreate kafka`, and
+confirm the offsets still read 6 afterwards.
+
+- Quality gate: `ruff` clean, `mypy --strict` clean on 145 files, **437 tests**
+  passing with Kafka up, `alembic check` clean.

@@ -20,6 +20,7 @@ exactly when it is most needed — after a crash.
 from __future__ import annotations
 
 from sqlalchemy import func, select
+from sqlalchemy.dialects.postgresql import insert
 
 from app.core.database import session_scope
 from app.core.logging import get_logger
@@ -39,6 +40,9 @@ class TraceRecorder:
     def handle(self, event: DomainEvent) -> None:
         """Persist one event under the trace its producer assigned.
 
+        Idempotent, which at-least-once delivery makes mandatory rather than
+        nice to have. Handling the same event twice must leave one row.
+
         Stateless on purpose. Holding a trace id would work for the in-process
         bus, which only ever sees one run, and would silently mis-file every
         event once the same code runs as a consumer group across many runs.
@@ -49,19 +53,31 @@ class TraceRecorder:
         number is the same on every delivery, which is also what makes
         milestone 3's idempotency check possible.
         """
-        with session_scope() as session:
-            session.add(
-                Event(
-                    trace_id=event.trace_id,
-                    sequence=event.sequence,
-                    event_type=event.event_type,
-                    component=event.component,
-                    ts=event.ts,
-                    duration_ms=event.duration_ms,
-                    status=event.status,
-                    event_metadata=event.payload,
-                )
+        # Insert-or-ignore rather than check-then-insert. Two consumers, or one
+        # consumer and a replay, can be handling the same event at the same
+        # moment; a SELECT followed by an INSERT has a window between them and
+        # the database is the only place that window can be closed.
+        #
+        # DO NOTHING rather than DO UPDATE: an event is a fact about something
+        # that already happened, so a redelivery carries nothing newer than the
+        # row already stored. Overwriting would be busywork at best, and at
+        # worst would let a corrupted redelivery replace a good record.
+        statement = (
+            insert(Event)
+            .values(
+                trace_id=event.trace_id,
+                sequence=event.sequence,
+                event_type=event.event_type,
+                component=event.component,
+                ts=event.ts,
+                duration_ms=event.duration_ms,
+                status=event.status,
+                event_metadata=event.payload,
             )
+            .on_conflict_do_nothing(constraint="uq_events_trace_sequence")
+        )
+        with session_scope() as session:
+            session.execute(statement)
 
 
 def already_recorded(trace_id: str, sequence: int) -> bool:

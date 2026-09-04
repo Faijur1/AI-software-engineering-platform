@@ -5,7 +5,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Text
+from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PgUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -168,6 +168,14 @@ class Event(UUIDPrimaryKey, Base):
     """
 
     __tablename__ = "events"
+    # (trace_id, sequence) is the event's identity, so redelivering one cannot
+    # duplicate it. Kafka is at-least-once by design: a consumer that crashes
+    # between handling and committing sees the same event again, and a replay
+    # from offset 0 sees every event again. Enforced in the database rather than
+    # by a check-then-insert, which races.
+    __table_args__ = (
+        UniqueConstraint("trace_id", "sequence", name="uq_events_trace_sequence"),
+    )
 
     trace_id: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
     # Monotonic within a trace, so ordering never depends on timestamp
