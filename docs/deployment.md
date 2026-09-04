@@ -43,7 +43,7 @@ obvious failure is reported in seconds rather than after the slow tiers.
 
 | Job | Steps |
 | --- | --- |
-| Backend | `ruff` -> `mypy` -> unit tests -> `alembic upgrade head` -> `alembic check` -> integration tests |
+| Backend | `ruff` -> `mypy` -> unit tests -> `alembic upgrade head` -> `alembic check` -> integration tests -> kafka tests |
 | Sandbox | build `aisep-sandbox:latest` -> tests marked `sandbox` |
 | Frontend | `eslint` -> `tsc --noEmit` -> `next build` |
 
@@ -51,10 +51,18 @@ obvious failure is reported in seconds rather than after the slow tiers.
 drift from migrations -- a divergence no test can see, which otherwise surfaces
 in production as a missing column.
 
-The backend job runs Postgres and Redis as service containers, using the same
-images as `docker-compose.yml`. `pgvector/pgvector:pg16` rather than plain
+The backend job runs Postgres, Redis and Kafka as service containers, using the
+same images as `docker-compose.yml`. `pgvector/pgvector:pg16` rather than plain
 `postgres`: the extension is not in the stock image, and the first migration
-would fail without it.
+would fail without it. Kafka runs in KRaft mode with a single broker, so the
+`kafka` tier is genuinely exercised rather than merely written -- tests CI never
+runs are tests CI does not cover, which is a lesson this pipeline learned the
+hard way when those tests briefly ran in the unit job against no broker.
+
+The five tiers partition the suite exactly, and
+`tests/unit/test_ci_tiers.py` asserts that: a marker declared without being
+added to a selector fails immediately rather than silently running its tests in
+a job that cannot serve them.
 
 The sandbox job builds the image rather than pulling one. ADR-006 makes the
 sandbox a security boundary, and its tests assert that the network is
@@ -70,7 +78,10 @@ Tests marked `llm` are excluded: they need a running Ollama with models pulled,
 which is a developer-machine dependency rather than a CI one. That gap is real
 and worth stating -- nothing in CI exercises a live model.
 
-## Stage 3 cloud target (planned)
+## Stage 3 cloud target (not built)
+
+Kafka and the event log *are* built and run locally (ADR-004); what follows is
+the managed-service target, which is not.
 
 Not built. Introduced only once the AI core is proven, and each piece has an ADR
 recording the problem it solves.

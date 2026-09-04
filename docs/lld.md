@@ -30,7 +30,9 @@ backend/
 │   │                           Gemini chat providers, embeddings, chat prompt
 │   ├── agent/                  engine, tools, tracing, patches
 │   ├── sandbox/                Docker runner (ADR-006)
-│   ├── queue/                  queue interface + RQ backend (ADR-003)
+│   ├── queue/                  queue interface, RQ and Kafka backends (ADR-003)
+│   ├── events/                  indexing event contract, publishers, recorder,
+│   │                           replay (ADR-004)
 │   └── workers/                worker entrypoints
 ├── migrations/                 Alembic
 ├── scripts/                    CI helpers (annotate_failures.py)
@@ -162,8 +164,36 @@ runs it, which is a denial of service rather than untidiness.
 ## `queue/`
 
 `base.py` is a `Protocol` with one method per job kind, kept deliberately narrow
-so the RQ backend can be replaced by Kafka without touching callers (ADR-004).
-The RQ backend uses `SimpleWorker` on Windows, which has no `os.fork`.
+so the RQ backend can be replaced without touching callers (ADR-004). The RQ
+backend uses `SimpleWorker` on Windows, which has no `os.fork`.
+
+`factory.py` chooses between them on `QUEUE_BACKEND`. RQ is the default:
+ADR-004 scopes Kafka to *events*, and for work dispatch RQ gives per-job retry
+and failure visibility a log does not. `kafka_backend.py` exists to show the
+interface was a real seam, and it delegates `enqueue_agent_run` back to RQ
+because ADR-004 excludes agent runs as a state machine rather than a stream.
+
+## `events/`
+
+Added in Stage 3. `types.py` holds the closed vocabulary of seven indexing
+facts and the `DomainEvent` that carries them; an event type outside the set
+raises at construction, because an unknown type would be published, persisted
+and replayed forever before anyone noticed a consumer skipping it.
+
+`publisher.py` is the seam: `InProcessEventBus` fans out synchronously with no
+durability, and `kafka.py` publishes to a retained log instead. `factory.py`
+picks one on `EVENT_BACKEND`, defaulting to in-process so a checkout with no
+broker still indexes and still records traces.
+
+`recorder.py` is the second consumer ADR-004 required before Kafka could be
+adopted. It is stateless and reads the trace id from the event, because a
+consumer group sees every run rather than one; and it inserts with
+`ON CONFLICT DO NOTHING` against a uniqueness constraint on
+`(trace_id, sequence)`, which is what makes at-least-once delivery survivable.
+
+`replay.py` reads the whole log with a fresh consumer group, leaving the
+worker's offsets untouched, and reports events delivered and rows written
+separately -- a healthy replay delivers everything and writes nothing.
 
 ## Frontend layout
 

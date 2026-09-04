@@ -46,6 +46,26 @@ that before any specialisation is built.
 | 6 | Branch and PR creation behind the approval gate | ⬜ Not started |
 | 7 | Measure against the baseline; keep or revert | ⬜ Not started |
 
+### Stage 3 — event streaming and orchestration, scoped to what runs locally
+
+Kafka and Kubernetes only; AWS is deliberately untouched. Milestones 4 to 6 were
+dropped on measured grounds rather than preference — see
+[ADR-005](adr/ADR-005-kubernetes-worker-scaling.md).
+
+| # | Milestone | Status |
+| --- | --- | --- |
+| 1 | Indexing event contract + a second consumer | ✅ **Done — verified** |
+| 2 | Kafka broker behind the event and queue seams | ✅ **Done — verified** |
+| 3 | Idempotent consumption and log replay | ✅ **Done — verified** |
+| 4 | Consumer lag as a scaling signal | ⬜ Not built — nothing generates lag |
+| 5 | Kubernetes worker deployments | ⬜ Not built — memory, see ADR-005 |
+| 6 | Sandbox as a Kubernetes Job | ⬜ Not built — would amend ADR-006 |
+| — | AWS (MSK, EKS, RDS, S3) | ⬜ Documented future step, not built |
+
+Kafka is **off by default**: it is profile-gated in `docker-compose.yml`, and
+both `EVENT_BACKEND` and `QUEUE_BACKEND` default to the non-Kafka path, so a
+fresh checkout runs the whole system with no broker.
+
 **Milestones 2–4 are paused.** The baseline below shows the single agent
 failing at reasoning, not at coordination — which is not what specialisation
 addresses. They wait behind [ADR-013](adr/ADR-013-cloud-llm-provider.md).
